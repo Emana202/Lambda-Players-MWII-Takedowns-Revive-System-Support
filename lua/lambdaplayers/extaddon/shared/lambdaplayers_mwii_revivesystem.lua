@@ -1,18 +1,17 @@
 local hookName = "Lambda_MWII_ReviveSystem_"
-local enableDowning, downChance, downedOnce, enableReviving, enableSelfReviving, enableWeapons, plysCanRevive, ignoreDowned, bystandersRevive
+
+local enableDowning = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enabledowning", 1, true, false, false, "If Lambda Players can be downed if they reach zero health", 0, 1, { type = "Bool", name = "Enable Downing", category = "MWII - Revive System" } )
+local downChance = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_downchance", 100, true, false, false, "The chance a Lambda Player will get downed instead of dying", 0, 100, { type = "Slider", decimals = 0, name = "Chance To Be Downed", category = "MWII - Revive System" } )
+local downedOnce = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_downedonce", 1, true, false, false, "If Lambda Players can be downed only one time", 0, 1, { type = "Bool", name = "Downed Only Once", category = "MWII - Revive System" } )
+local enableReviving = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enablereviving", 1, true, false, false, "If Lambda Players can revive downed players other Lambda Players if they're friends or are in the same team", 0, 1, { type = "Bool", name = "Enable Reviving", category = "MWII - Revive System" } )
+local enableSelfReviving = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enableselfreviving", 1, true, false, false, "If Lambda Players can self-revive themself if they are in safe position", 0, 1, { type = "Bool", name = "Enable Self-Reviving", category = "MWII - Revive System" } )
+local enableWeapons = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enableweapons", 1, true, false, false, "If Lambda Players can use and attack with their weapons when downed", 0, 1, { type = "Bool", name = "Enable Weapon Usage", category = "MWII - Revive System" } )
+local plysCanRevive = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_playerscanrevive", 1, true, false, false, "If real players can revive downed Lambda Players", 0, 1, { type = "Bool", name = "Players Can Revive Lambdas", category = "MWII - Revive System" } )
+local ignoreDowned = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_ignoredownedenemies", 0, true, false, false, "If Lambda Players should ignore enemies that are currenly downed", 0, 1, { type = "Bool", name = "Ignore Downed Enemies", category = "MWII - Revive System" } )
+local bystandersRevive = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_bystandersrevive", 1, true, false, false, "If Lambda Players that are not friends or teammates with their revive target but are not aggresive in their personality can revive them", 0, 1, { type = "Bool", name = "Friendly Bystanders Can Revive", category = "MWII - Revive System" } )
 
 local function InitializeModule()
 	if !istable( COD ) then return end
-
-	enableDowning = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enabledowning", 1, true, false, false, "If Lambda Players can be downed if they reach zero health", 0, 1, { type = "Bool", name = "Enable Downing", category = "MWII - Revive System" } )
-	downChance = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_downchance", 100, true, false, false, "The chance a Lambda Player will get downed instead of dying", 0, 100, { type = "Slider", decimals = 0, name = "Chance To Be Downed", category = "MWII - Revive System" } )
-	downedOnce = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_downedonce", 1, true, false, false, "If Lambda Players can be downed only one time", 0, 1, { type = "Bool", name = "Downed Only Once", category = "MWII - Revive System" } )
-	enableReviving = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enablereviving", 1, true, false, false, "If Lambda Players can revive downed players other Lambda Players if they're friends or are in the same team", 0, 1, { type = "Bool", name = "Enable Reviving", category = "MWII - Revive System" } )
-	enableSelfReviving = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enableselfreviving", 1, true, false, false, "If Lambda Players can self-revive themself if they are in safe position", 0, 1, { type = "Bool", name = "Enable Self-Reviving", category = "MWII - Revive System" } )
-	enableWeapons = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enableweapons", 1, true, false, false, "If Lambda Players can use and attack with their weapons when downed", 0, 1, { type = "Bool", name = "Enable Weapon Usage", category = "MWII - Revive System" } )
-	plysCanRevive = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_playerscanrevive", 1, true, false, false, "If real players can revive downed Lambda Players", 0, 1, { type = "Bool", name = "Players Can Revive Lambdas", category = "MWII - Revive System" } )
-	ignoreDowned = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_ignoredownedenemies", 0, true, false, false, "If Lambda Players should ignore enemies that are currenly downed", 0, 1, { type = "Bool", name = "Ignore Downed Enemies", category = "MWII - Revive System" } )
-	bystandersRevive = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_bystandersrevive", 1, true, false, false, "If Lambda Players that are not friends or teammates with their revive target but are not aggresive in their personality can revive them", 0, 1, { type = "Bool", name = "Friendly Bystanders Can Revive", category = "MWII - Revive System" } )
 
 	local IsValid = IsValid
 	local ipairs = ipairs

@@ -1,11 +1,10 @@
-local enableTakedowns, onlyDowned
 local hookName = "Lambda_MWII_Takedowns_"
+
+local enableTakedowns = CreateLambdaConvar( "lambdaplayers_mwii_takedowns_enabled", 1, true, false, false, "If Lambda Players are allowed to execute takedowns when right behind their targets. Make sure that Lambda Players are registered in the Takedown NPC and Can be Takedowned NPC list", 0, 1, { type = "Bool", name = "Enable Takedowns", category = "MWII - Takedowns" } )
+local onlyDowned = CreateLambdaConvar( "lambdaplayers_mwii_takedowns_onlydowned", 0, true, false, false, "If Lambda Players should only takedown targets that are downed", 0, 1, { type = "Bool", name = "Takedown Only Downed", category = "MWII - Takedowns" } )
 
 local function InitializeModule()
 	if !istable( COD ) then return end
-
-	enableTakedowns = CreateLambdaConvar( "lambdaplayers_mwii_takedowns_enabled", 1, true, false, false, "If Lambda Players are allowed to execute takedowns when right behind their targets. Make sure that Lambda Players are registered in the Takedown NPC and Can be Takedowned NPC list", 0, 1, { type = "Bool", name = "Enable Takedowns", category = "MWII - Takedowns" } )
-	onlyDowned = CreateLambdaConvar( "lambdaplayers_mwii_takedowns_onlydowned", 0, true, false, false, "If Lambda Players should only takedown targets that are downed", 0, 1, { type = "Bool", name = "Takedown Only Downed", category = "MWII - Takedowns" } )
 
 	local IsValid = IsValid
 	local net = net
