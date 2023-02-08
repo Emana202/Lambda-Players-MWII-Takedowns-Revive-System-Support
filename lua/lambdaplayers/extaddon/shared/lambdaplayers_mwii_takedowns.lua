@@ -1,7 +1,7 @@
 local hookName = "Lambda_MWII_Takedowns_"
 
 local enableTakedowns = CreateLambdaConvar( "lambdaplayers_mwii_takedowns_enabled", 1, true, false, false, "If Lambda Players are allowed to execute takedowns when right behind their targets. Make sure that Lambda Players are registered in the Takedown NPC and Can be Takedowned NPC list", 0, 1, { type = "Bool", name = "Enable Takedowns", category = "MWII - Takedowns" } )
-local onlyDowned = CreateLambdaConvar( "lambdaplayers_mwii_takedowns_onlydowned", 0, true, false, false, "If Lambda Players should only takedown targets that are downed", 0, 1, { type = "Bool", name = "Takedown Only Downed", category = "MWII - Takedowns" } )
+local downedBehavior = CreateLambdaConvar( "lambdaplayers_mwii_takedowns_downedbehavior", 0, true, false, false, "What takedown behavior should Lambda Players use on downed targets: 0 - Treat them as everyone else; 1 - Only takedown downed targets; 2 - Never takedown downed targets", 0, 2, { type = "Slider", decimals = 0, name = "Takedown Behavior On Downed Targets", category = "MWII - Takedowns" } )
 
 local function InitializeModule()
 	if !istable( COD ) then return end
@@ -35,7 +35,6 @@ local function InitializeModule()
 		local plyMeta = FindMetaTable( "Player" )
 		local entMeta = FindMetaTable( "Entity" )
 
-		local lambdaDownedWep = GetConVar( "lambdaplayers_mwii_revivesystem_enableweapons" )
 		local plyDownedWep = GetConVar( "mwii_revive_canshoot" )
 		local npcDownedWep = GetConVar( "mwii_revive_npc_canshoot" )
 		
@@ -162,6 +161,7 @@ local function InitializeModule()
 			if self.Takedowning then 
 	        	self.l_isfrozen = false
 				if CurTime() <= self.TakedownTime and IsValid( self.TakedownNPC ) then self.TakedownNPC:Finish() end
+				self:DrawShadow( false )
 			end
 			self:l_Takedowns_OldLambdaOnKilled( dmginfo )
 		end
@@ -196,7 +196,9 @@ local function InitializeModule()
 	        	local ene = self:GetEnemy()
 	        	if LambdaIsValid( ene ) and !ene.Takedowning and ene:Health() > 0 and ( ene:IsPlayer() and ene:Alive() and !ene:HasGodMode() and takedownPlayers:GetBool() or ( ene:IsNPC() or ene:IsNextBot() ) and ( takedownAllNPCs:GetBool() or table_HasValue( takedownedNPCsClassList, ene:GetClass() ) ) ) then
 			        local IsDowned = ene:IsDowned()
-			        if !onlyDowned:GetBool() or IsDowned then
+			        local downBehav = downedBehavior:GetInt()
+
+			        if downBehav == 0 or IsDowned and downBehav != 2 then
 				        local isBehind = LambdaIsAtBack( self, ene )
 				        if CurTime() > self.l_TakedownCheckTime and ( isBehind and self:IsInRange( ene, 70 ) or IsDowned and self:IsInRange( ene, 32 ) ) then
 				        	self:NPC_Takedown( ene )
@@ -204,7 +206,7 @@ local function InitializeModule()
 			                self.l_PrevKeepDistance = self.l_CombatKeepDistance
 			                self.l_CombatKeepDistance = 0
 
-			                if !IsDowned or ene.IsLambdaPlayer and ( !lambdaDownedWep:GetBool() or self.l_IsSelfReviving or ene:GetState() != "Combat" or ene:GetEnemy() != self ) or ene:IsPlayer() and !plyDownedWep:GetBool() or ene:IsNPC() and !npcDownedWep:GetBool() then
+			                if !IsDowned or ene.IsLambdaPlayer and ( !ene:HasLethalWeapon() or ene:GetState() != "Combat" or ene:GetEnemy() != self ) or ene:IsPlayer() and !plyDownedWep:GetBool() or ene:IsNPC() and !npcDownedWep:GetBool() then
 				                self.l_PrevAttackDistance = self.l_CombatAttackRange
 				                self.l_CombatAttackRange = 0
 				            end
