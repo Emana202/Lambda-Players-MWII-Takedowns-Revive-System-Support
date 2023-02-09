@@ -188,7 +188,7 @@ local function InitializeModule()
 	        self.l_UpdateDownedAnimations = false
 	        self:SimpleTimer( fallTime, function() self.l_UpdateDownedAnimations = true end )
 			self:SimpleTimer( fallTime / random( 1, 4 ), function() 
-				if self:GetState() == "Retreat" then return end
+				if self:IsPanicking() then return end
 				self:PlaySoundFile( self:GetVoiceLine( "panic" ), true ) 
 			end )
 
@@ -325,7 +325,7 @@ local function InitializeModule()
                        	self:SetNWEntity( "Reviver", NULL )
 					end
 				else
-	        		local canSelfRevive = ( enableSelfReviving:GetBool() and self.l_UpdateDownedAnimations and !self.Takedowning and ( !self:InCombat() or !self:IsInRange( self:GetEnemy(), 1000 ) or !self:CanSee( self:GetEnemy() ) ) and ( self:GetState() != "Retreat" or !LambdaIsValid( self.l_RetreatTarget ) or !self:IsInRange( self.l_RetreatTarget, 1000 ) and !self:CanSee( self.l_RetreatTarget ) ) )
+	        		local canSelfRevive = ( enableSelfReviving:GetBool() and self.l_UpdateDownedAnimations and !self.Takedowning and ( !self:InCombat() or !self:IsInRange( self:GetEnemy(), 1000 ) or !self:CanSee( self:GetEnemy() ) ) and ( !self:IsPanicking() or !LambdaIsValid( self.l_RetreatTarget ) or !self:IsInRange( self.l_RetreatTarget, 1000 ) and !self:CanSee( self.l_RetreatTarget ) ) )
 	        		if !self.l_IsSelfReviving then self.l_IsSelfReviving = ( random( 1, 100 ) == 1 and canSelfRevive ) end
 
 	        		if self.l_IsSelfReviving and canSelfRevive then
@@ -413,7 +413,7 @@ local function InitializeModule()
 	        elseif CurTime() > self.l_ReviveTargetsCheckTime then 
         		local ene = self:GetEnemy()
 
-        		if ( self:GetState() != "Combat" and !LambdaIsValid( ene ) or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) or ene.GetEnemy and ene:GetEnemy() != self ) and self:GetState() != "Retreat" and self:GetState() != "ReviveFriend" and enableReviving:GetBool() then
+        		if ( self:GetState() != "Combat" and !LambdaIsValid( ene ) or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) or ene.GetEnemy and ene:GetEnemy() != self ) and !self:IsPanicking() and self:GetState() != "ReviveFriend" and enableReviving:GetBool() then
 	        		local canRescueNeutrals = ( bystandersRevive:GetBool() and self:GetState() != "FindTarget" and random( 1, 100 ) > self:GetCombatChance() and random( 1, 2 ) == 1 )
 	        		local revTarget = self:GetClosestEntity( nil, 2000, function( ent )
 	        			if ( !ent.IsLambdaPlayer or ent:GetIsDead() ) and ( !ent:IsPlayer() or !ent:Alive() or ignorePlys:GetBool() ) or ent.Takedowning or !ent:IsDowned() or LambdaIsValid( ent:GetNWEntity( "Reviver" ) ) or !self:CanSee( ent ) then return false end

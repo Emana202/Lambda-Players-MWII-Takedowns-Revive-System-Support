@@ -240,7 +240,7 @@ local function InitializeModule()
 
 				if !target:GetIsDead() then
 					if dmginfo:GetAttacker() != self and dmginfo:GetAttacker() != target then
-					    if random( 1, 100 ) <= 25 then
+					    if self.AddFriend and random( 1, 100 ) <= 25 then
 					        self:AddFriend( dmginfo:GetAttacker() )
 					    end
 
