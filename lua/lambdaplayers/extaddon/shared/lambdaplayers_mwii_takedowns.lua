@@ -1,11 +1,11 @@
+if !file.Exists( "autorun/sh_mwii_takedowns.lua", "LUA" ) then return end
+
 local hookName = "Lambda_MWII_Takedowns_"
 
 local enableTakedowns = CreateLambdaConvar( "lambdaplayers_mwii_takedowns_enabled", 1, true, false, false, "If Lambda Players are allowed to execute takedowns when right behind their targets. Make sure that Lambda Players are registered in the Takedown NPC and Can be Takedowned NPC list", 0, 1, { type = "Bool", name = "Enable Takedowns", category = "MWII - Takedowns" } )
 local downedBehavior = CreateLambdaConvar( "lambdaplayers_mwii_takedowns_downedbehavior", 0, true, false, false, "What takedown behavior should Lambda Players use on downed targets: 0 - Treat them as everyone else; 1 - Only takedown downed targets; 2 - Never takedown downed targets", 0, 2, { type = "Slider", decimals = 0, name = "Takedown Behavior On Downed Targets", category = "MWII - Takedowns" } )
 
 local function InitializeModule()
-	if !istable( COD ) then return end
-
 	local IsValid = IsValid
 	local net = net
 
@@ -133,6 +133,9 @@ local function InitializeModule()
 
 		local oldPlayerTakedown = plyMeta.Takedown
 		function plyMeta:Takedown()
+	        local trEnt = self:GetEyeTrace().Entity
+	        if IsValid( trEnt ) and trEnt.IsLambdaPlayer and ( !trEnt:Alive() or ( LambdaTeams and LambdaTeams:AreTeammates( self, trEnt ) or trEnt.IsFriendsWith and trEnt:IsFriendsWith( self ) ) ) then return end
+
 	        oldPlayerTakedown( self )
 	        if !self.Takedowning then return end
 
@@ -144,6 +147,8 @@ local function InitializeModule()
 
 		local oldNPCTakedown = entMeta.NPC_Takedown
 		function entMeta:NPC_Takedown( ent )
+	        if IsValid( ent ) and ent.IsLambdaPlayer and ( !ent:Alive() or ( LambdaTeams and LambdaTeams:AreTeammates( self, ent ) or self.IsFriendsWith and self:IsFriendsWith( ent ) ) ) then return end
+
 	        oldNPCTakedown( self, ent )
 	        if !self.Takedowning then return end
 
