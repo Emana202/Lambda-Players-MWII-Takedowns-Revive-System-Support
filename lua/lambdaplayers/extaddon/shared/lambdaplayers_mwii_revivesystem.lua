@@ -111,6 +111,9 @@ local function InitializeModule()
 		local reviveTime = GetConVar( "mwii_revive_time" )
 		local reviveHPTimer = GetConVar( "mwii_revive_hptimer" )
 
+		local downedCollMins = Vector( -26, -16, 0 )
+		local downedCollMaxs = Vector( 38, 16, 24 )
+
 		local function OnServerThink()
 			if !plysCanRevive:GetBool() then return end
 			local revEnemies = reviveEnemies:GetBool()
@@ -325,6 +328,19 @@ local function InitializeModule()
 					elseif useSpecifiedWeapon:GetBool() and self.l_Weapon != forceWep and self:CanEquipWeapon( forceWep ) then
 						self:SwitchWeapon( forceWep )
 					end
+
+	        		if CurTime() > self.l_nextphysicsupdate then
+		                local phys = self:GetPhysicsObject()
+		                if self:WaterLevel() == 0 then
+		                    phys:SetPos( self:GetPos() )
+		                    phys:SetAngles( self:GetAngles() )
+		                else
+		                    phys:UpdateShadow( self:GetPos(), self:GetAngles(), 0 )
+		                end
+
+		                self:SetCollisionBounds( downedCollMins, downedCollMaxs )
+	        			self.l_nextphysicsupdate = CurTime() + 0.5
+	        		end
 
 		        	if self.l_UpdateDownedAnimations then
 			        	local downAnim = "laststand_idle"
