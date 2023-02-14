@@ -38,9 +38,9 @@ local function InitializeModule()
 
 		local plyDownedWep = GetConVar( "mwii_revive_canshoot" )
 		local npcDownedWep = GetConVar( "mwii_revive_npc_canshoot" )
-		
 		local takedownPlayers = GetConVar( "mwii_takedown_npcs_canusetakedowns_players" )
 		local takedownAllNPCs = GetConVar( "mwii_takedown_npcs_canusetakedowns_allnpcs" )
+		local serverRagdolls = GetConVar( "lambdaplayers_lambda_serversideragdolls" )
 
 		local function OnLambdaTakedown( self, isVictim )
 	        self.l_isfrozen = true
@@ -100,7 +100,7 @@ local function InitializeModule()
 
 	        	local tkBD = tkNPC.bd
 	        	if IsValid( tkBD ) then
-	        		if !IsSinglePlayer() then self.l_BecomeRagdollEntity = tkBD end
+	        		if !IsSinglePlayer() or serverRagdolls:GetBool() then self.l_BecomeRagdollEntity = tkBD end
 
 		        	net.Start( "lambda_mwii_setplayercolor" )
 		        		net.WriteEntity( tkBD )
@@ -233,7 +233,7 @@ local function InitializeModule()
 			        local IsDowned = ene:IsDowned()
 			        local downBehav = downedBehavior:GetInt()
 
-			        if downBehav == 0 or IsDowned and downBehav != 2 then
+			        if downBehav == 0 or downBehav == 1 and IsDowned or downBehav == 2 and !IsDowned then
 				        local isBehind = LambdaIsAtBack( self, ene )
 				        if CurTime() > self.l_TakedownCheckTime and ( isBehind and self:IsInRange( ene, 70 ) or IsDowned and self:IsInRange( ene, 32 ) ) then
 				        	self:NPC_Takedown( ene )
