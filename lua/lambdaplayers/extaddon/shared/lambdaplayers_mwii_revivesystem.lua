@@ -18,8 +18,9 @@ local function InitializeModule()
 	local IsValid = IsValid
 	local ipairs = ipairs
 	local FrameTime = FrameTime
+	local GetConVar = GetConVar
 
-	local reviveEnemies = GetConVar( "mwii_revive_enemy" )
+	local reviveEnemies;
 
 	if ( CLIENT ) then
 
@@ -47,6 +48,8 @@ local function InitializeModule()
 
 			local ply = LocalPlayer()
 			local plyEye = ply:EyePos()
+			
+			reviveEnemies = reviveEnemies or GetConVar( "mwii_revive_enemy" )
 			local revEnemies = reviveEnemies:GetBool()
 
 			if reviceIcon:GetBool() then
@@ -116,6 +119,8 @@ local function InitializeModule()
 
 		local function OnServerThink()
 			if !plysCanRevive:GetBool() then return end
+
+			reviveEnemies = reviveEnemies or GetConVar( "mwii_revive_enemy" )
 			local revEnemies = reviveEnemies:GetBool()
 
 			for _, ply in ipairs( player_GetAll() ) do
