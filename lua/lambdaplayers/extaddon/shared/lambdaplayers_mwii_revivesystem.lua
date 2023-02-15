@@ -238,7 +238,8 @@ local function InitializeModule()
 
 	        if self:IsDowned() then
 	        	local reviver = self:GetNWEntity( "Reviver" )
-	        	if IsValid( reviver ) then 
+
+	        	if LambdaIsValid( reviver ) then 
 	        		if ( !reviver:IsPlayer() or reviver:KeyDown(IN_USE) and reviver:GetEyeTrace().Entity == self ) and !self.Takedowning then
 					    self.ReviveNumber = ( self.ReviveNumber + FrameTime() / 3 )
 					    self.l_moveWaitTime = CurTime() + 0.1
@@ -264,7 +265,7 @@ local function InitializeModule()
 	                   	self:SetNWEntity( "Reviver", NULL )
 					end
 				else
-	        		local canSelfRevive = ( enableSelfReviving:GetBool() and self.l_UpdateDownedAnimations and !self.Takedowning and ( !self:InCombat() or !self:IsInRange( self:GetEnemy(), 1000 ) or !self:CanSee( self:GetEnemy() ) ) and ( !self:IsPanicking() or !LambdaIsValid( self.l_RetreatTarget ) or !self:IsInRange( self.l_RetreatTarget, 1000 ) and !self:CanSee( self.l_RetreatTarget ) ) )
+	        		local canSelfRevive = ( enableSelfReviving:GetBool() and self.l_UpdateDownedAnimations and !self.Takedowning and !IsValid( reviver ) and ( !self:InCombat() or !self:IsInRange( self:GetEnemy(), 1000 ) or !self:CanSee( self:GetEnemy() ) ) and ( !self:IsPanicking() or !LambdaIsValid( self.l_RetreatTarget ) or !self:IsInRange( self.l_RetreatTarget, 1000 ) and !self:CanSee( self.l_RetreatTarget ) ) )
 	        		if !self.l_IsSelfReviving then self.l_IsSelfReviving = ( random( 1, 100 ) == 1 and canSelfRevive ) end
 
 	        		if self.l_IsSelfReviving and canSelfRevive then
@@ -312,7 +313,6 @@ local function InitializeModule()
 					local curCooldown = self.l_WeaponUseCooldown
 					self.l_WeaponUseCooldown = ( CurTime() <= curCooldown and curCooldown + wepDelay or CurTime() + wepDelay )
 	                
-	                local reviver = self:GetNWEntity( "Reviver" )
 	                if LambdaIsValid( reviver ) then
 	                	if self.AddFriend and random( 1, 2 ) == 1 then self:AddFriend( reviver ) end
 
