@@ -81,18 +81,16 @@ local function InitializeModule()
 	        if LambdaIsValid( ent ) and ent.IsLambdaPlayer and ent:GetNWBool( "Downed" ) and ply:EyePos():DistToSqr( tr.HitPos ) < 5000 and ( revEnemies or LambdaTeams and LambdaTeams:AreTeammates( ply, ent ) != false ) then
 	            if ply:KeyDown( IN_USE ) then
 	                SimpleText( "Revive Progress", "TDMG_SmallFont1", w, h + 100, color_grey1, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM )
-	                revtime = revtime + ( FrameTime() / 3 )
+	                
 	                surface.SetDrawColor( color_grey2 )
 	                surface.DrawRect( w - 100, h + 110, 200, 24 )
 
+	                local reviveProgress = ent:GetNW2Float( "lambda_mwii_reviveprogress", 0 )
 	                surface.SetDrawColor(color_grey1)
-	                surface.DrawRect( w - 98, h + 112, 196 * ( min( revtime, 1 ) / 1 ), 20 )
+	                surface.DrawRect( w - 98, h + 112, 196 * ( min( reviveProgress, 1 ) / 1 ), 20 )
 	            else
 	                SimpleText( "Press E to revive", "TDMG_SmallFont1", w, h + 115, color_grey1, TEXT_ALIGN_CENTER, TEXT_ALIGN_BOTTOM )
-	                revtime = 0
 	            end
-	        else
-	        	revtime = 0
 	        end
 		end
 
@@ -107,6 +105,7 @@ local function InitializeModule()
 		local min = math.min
 		local table_Empty = table.Empty
 		local player_GetAll = player.GetAll
+		local GetLambdaPlayers = GetLambdaPlayers
 		local plyMeta = FindMetaTable( "Player" )
 		local ignorePlys = GetConVar( "ai_ignoreplayers" )
 
@@ -133,6 +132,79 @@ local function InitializeModule()
 	                ent:SetNWEntity( "Reviver", ply )
 	                ply.RevivingThatEntity = ent
 	            end
+			end
+
+			for _, ply in ipairs( GetLambdaPlayers() ) do
+		        if !LambdaIsValid( ply ) or !ply:IsDowned() then continue end
+		        local reviver = ply:GetNWEntity( "Reviver" )
+
+	        	if LambdaIsValid( reviver ) then
+	        		if !ply.Takedowning and ( !reviver:IsPlayer() or reviver:KeyDown( IN_USE ) and reviver:GetEyeTrace().Entity == ply ) then
+	                    if reviver:IsPlayer() then
+	                        reviver:SetActiveWeapon(nil)
+	                        
+	                        if !reviver.RevivingTarget then
+	                            reviver:SetSVAnimation( "laststand_startrevive" )
+	                            reviver.RevivingTarget = true
+	                        end
+	                    end
+
+					    ply.l_moveWaitTime = CurTime() + 0.1
+	                    ply:SetNW2Float( "lambda_mwii_reviveprogress", ply:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) + ( FrameTime() / 3 ) )
+	                else
+	                    if reviver:IsPlayer() and reviver.RevivingTarget then
+	                        if !reviver.Takedowning then reviver:SetSVAnimation( "" ) end
+	                        reviver.RevivingTarget = false
+	                    end
+	                   	ply:SetNWEntity( "Reviver", NULL )
+					end
+				end
+
+        		if ply.l_IsSelfReviving then
+	                ply:SetNW2Float( "lambda_mwii_reviveprogress", ply:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) + ( FrameTime() / 5.5 ) )
+	        	elseif !LambdaIsValid( reviver ) then
+	                ply:SetNW2Float( "lambda_mwii_reviveprogress", 0 )
+	        	end
+
+	        	if ply:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) >= 1.0 then
+					ply:SetHealth( 25 )
+
+			        ply:SetRunSpeed( ply.l_PreDownedData[ "RunSpeed" ] )
+			        ply:SetWalkSpeed( ply.l_PreDownedData[ "WalkSpeed" ] )
+			        ply:SetCrouchSpeed( ply.l_PreDownedData[ "CrouchSpeed" ] )
+				    ply.loco:SetJumpHeight( ply.l_PreDownedData[ "JumpHeight" ] )
+
+					ply.Downed = false
+					ply:SetNWBool( "Downed", false )
+				    
+				    table_Empty( ply.l_PreDownedData )
+
+					local standTime = ply:SetSequence( ply:LookupSequence( "laststand_standup" ) )
+					ply:ResetSequenceInfo()
+					ply:SetCycle( 0 )
+
+		    		ply:CancelMovement()
+					ply.l_moveWaitTime = CurTime() + standTime
+					ply:SimpleTimer( standTime, function() ply.l_UpdateAnimations = true end )
+
+					ply:SwitchWeapon( "none" )
+					local wepDelay = Rand( 0.33, 0.8 )
+					local curCooldown = ply.l_WeaponUseCooldown
+					ply.l_WeaponUseCooldown = ( CurTime() <= curCooldown and curCooldown + wepDelay or CurTime() + wepDelay )
+		            
+		            reviver = ply:GetNWEntity( "Reviver" )
+		            if LambdaIsValid( reviver ) then
+		            	if ply.AddFriend and random( 1, 2 ) == 1 then ply:AddFriend( reviver ) end
+
+		            	if reviver:IsPlayer() then
+		                    reviver:SetSVAnimation( "" )
+		                    reviver.RevivingTarget = false
+		                end
+
+						ply:LookTo( reviver, 1.0 )
+						ply:SimpleTimer( ( standTime / random( 1, 4 ) ), function() ply:PlaySoundFile( ply:GetVoiceLine( "assist" ), true ) end )
+		            end
+	        	end
 			end
 		end
 
@@ -172,8 +244,7 @@ local function InitializeModule()
 				self:SetSequence( self:LookupSequence( "laststand_startrevive" ) )
 				self:ResetSequenceInfo()
 				self:SetCycle( 0 )
-
-				while ( self.l_ReviveTarget.ReviveNumber < 1.0 ) do
+				while ( self.l_ReviveTarget:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) < 1.0 ) do
 					if !LambdaIsValid( self.l_ReviveTarget ) or !self.l_ReviveTarget:IsDowned() or self.l_ReviveTarget.Takedowning or !self:IsInRange( self.l_ReviveTarget, 40 ) then break end
 					if self.l_ReviveTarget:GetNWEntity( "Reviver" ) != self then break end
 					if self:IsDowned() or self.Takedowning or self:GetState() != "ReviveFriend" then break end
@@ -191,11 +262,6 @@ local function InitializeModule()
 			self:MoveToPos( revTarget, reviveTbl )
 		end
 
-		local function LambdaSetIsDowned( self, downed )
-			self.Downed = downed
-			self:SetNWBool( "Downed", downed )
-		end
-
 		local function LambdaBlankFunction( self ) end
 		local function LambdaBlankReturnTrueFunction( self ) return true end
 		local function LambdaBlankReturnFalseFunction( self ) return false end
@@ -210,15 +276,13 @@ local function InitializeModule()
 			self.l_ReviveSystem_OldPlayGestureAndWait = self.PlayGestureAndWait
 			self.PlayGestureAndWait = OnPlayGestureAndWait
 
-			self.SetIsDowned = LambdaSetIsDowned
 			self.ReviveFriend = LambdaReviveFriend
-			
+
 			self.SetSVAnimation = LambdaBlankFunction
 			self.GetActiveWeapon = LambdaBlankFunction
 			self.SetActiveWeapon = LambdaBlankFunction
 			self.KeyDown = LambdaBlankReturnTrueFunction
 
-			self.ReviveNumber = 0
 			self.l_Downer = NULL
 			self.l_IsSelfReviving = false
 			self.AlreadyWasDowned = false
@@ -227,6 +291,7 @@ local function InitializeModule()
 			self.NextHPTimePain = CurTime()
 			self.l_ReviveTargetsCheckTime = CurTime() + 1.0
 			self.l_PreDownedData = {}
+			self:SetNW2Float( "lambda_mwii_reviveprogress", 0 )
 		end
 
 		local GetMovingDirection = plyMeta.MovingDirection
@@ -238,44 +303,16 @@ local function InitializeModule()
 
 	        if self:IsDowned() then
 	        	local reviver = self:GetNWEntity( "Reviver" )
-	        	if IsValid( reviver ) then 
-	        		if ( !reviver:IsPlayer() or reviver:KeyDown(IN_USE) and reviver:GetEyeTrace().Entity == self ) and !self.Takedowning then
-					    self.ReviveNumber = ( self.ReviveNumber + FrameTime() / 3 )
-					    self.l_moveWaitTime = CurTime() + 0.1
-		        		
-		        		if reviver:IsPlayer() and self.l_IsSelfReviving then
-		        		 	self.ReviveNumber = 0
-		        		 	self.l_IsSelfReviving = false
-		        		end
-
-	                    if reviver:IsPlayer() then
-	                        reviver:SetActiveWeapon(nil)
-	                        
-	                        if !reviver.RevivingTarget then
-	                            reviver:SetSVAnimation( "laststand_startrevive" )
-	                            reviver.RevivingTarget = true
-	                        end
-	                     end
-	                else
-	                    if reviver:IsPlayer() and reviver.RevivingTarget then
-	                        if !reviver.Takedowning then reviver:SetSVAnimation( "" ) end
-	                        reviver.RevivingTarget = false
-	                    end
-	                   	self:SetNWEntity( "Reviver", NULL )
-					end
-				else
+	        	if !LambdaIsValid( reviver ) then 
 	        		local canSelfRevive = ( enableSelfReviving:GetBool() and self.l_UpdateDownedAnimations and !self.Takedowning and ( !self:InCombat() or !self:IsInRange( self:GetEnemy(), 1000 ) or !self:CanSee( self:GetEnemy() ) ) and ( !self:IsPanicking() or !LambdaIsValid( self.l_RetreatTarget ) or !self:IsInRange( self.l_RetreatTarget, 1000 ) and !self:CanSee( self.l_RetreatTarget ) ) )
 	        		if !self.l_IsSelfReviving then self.l_IsSelfReviving = ( random( 1, 100 ) == 1 and canSelfRevive ) end
 
 	        		if self.l_IsSelfReviving and canSelfRevive then
-	                	self.ReviveNumber = ( self.ReviveNumber + FrameTime() / 5.5 )
 					    self.l_moveWaitTime = CurTime() + 0.1
-		                
 		                self.l_PrevAttackDistance = self.l_CombatAttackRange
 		                self.l_CombatAttackRange = 0
-		        	else
-		        		if self.l_IsSelfReviving then self.l_IsSelfReviving = false end
-		        		self.ReviveNumber = 0
+		        	elseif self.l_IsSelfReviving then 
+		        		self.l_IsSelfReviving = false
 		        	end
 
 					if !reviveHPTimer:GetBool() then
@@ -288,43 +325,7 @@ local function InitializeModule()
 	                end
 	        	end
 
-	            if self.ReviveNumber >= 1.0 then
-					self:SetHealth( 25 )
-
-			        self:SetRunSpeed( self.l_PreDownedData[ "RunSpeed" ] )
-			        self:SetWalkSpeed( self.l_PreDownedData[ "WalkSpeed" ] )
-			        self:SetCrouchSpeed( self.l_PreDownedData[ "CrouchSpeed" ] )
-				    self.loco:SetJumpHeight( self.l_PreDownedData[ "JumpHeight" ] )
-
-					self:SetIsDowned( false )
-				    table_Empty( self.l_PreDownedData )
-
-					local standTime = self:SetSequence( self:LookupSequence( "laststand_standup" ) )
-					self:ResetSequenceInfo()
-					self:SetCycle( 0 )
-
-	        		self:CancelMovement()
-					self.l_moveWaitTime = CurTime() + standTime
-					self:SimpleTimer( standTime, function() self.l_UpdateAnimations = true end )
-
-					self:SwitchWeapon( "none" )
-					local wepDelay = Rand( 0.33, 0.8 )
-					local curCooldown = self.l_WeaponUseCooldown
-					self.l_WeaponUseCooldown = ( CurTime() <= curCooldown and curCooldown + wepDelay or CurTime() + wepDelay )
-	                
-	                local reviver = self:GetNWEntity( "Reviver" )
-	                if LambdaIsValid( reviver ) then
-	                	if self.AddFriend and random( 1, 2 ) == 1 then self:AddFriend( reviver ) end
-
-	                	if reviver:IsPlayer() then
-	                        reviver:SetSVAnimation( "" )
-	                        reviver.RevivingTarget = false
-	                    end
-
-						self:LookTo( reviver, 1.0 )
-						self:SimpleTimer( ( standTime / random( 1, 4 ) ), function() self:PlaySoundFile( self:GetVoiceLine( "assist" ), true ) end )
-	                end
-	            else
+	            if self:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) < 1 then
 	            	local forceWep = forcedWeapon:GetString()
 	            	if self.l_IsSelfReviving or !enableWeapons:GetBool() or useSpecifiedWeapon:GetBool() and self.l_Weapon != forceWep and !self:CanEquipWeapon( forceWep ) then
 	            		if self.l_Weapon != "none" and self.l_Weapon != "physgun" then
@@ -442,12 +443,6 @@ local function InitializeModule()
 				local curCooldown = self.l_WeaponUseCooldown
 				self.l_WeaponUseCooldown = ( CurTime() <= curCooldown and curCooldown + wepDelay or CurTime() + wepDelay )
 
-				if self:GetIsReloading() and enableWeapons:GetBool() and useSpecifiedWeapon:GetBool() then
-			    	self:RemoveNamedTimer( "Reload" )
-			        self.l_Clip = self.l_MaxClip
-			        self:SetIsReloading( false )
-			    end
-
 				self:RemoveGesture( self.l_CurrentPlayedGesture )
 				self.l_UpdateAnimations = false
 				
@@ -459,13 +454,24 @@ local function InitializeModule()
 
 		        self.l_UpdateDownedAnimations = false
 		        self:SimpleTimer( fallTime, function() self.l_UpdateDownedAnimations = true end )
+
+				local attacker = dmginfo:GetAttacker()
+				local useWeapons = enableWeapons:GetBool()
+
+				if self:GetIsReloading() and useWeapons and useSpecifiedWeapon:GetBool() then
+			    	self:RemoveNamedTimer( "Reload" )
+			        self.l_Clip = self.l_MaxClip
+			        self:SetIsReloading( false )
+			    end
+
 				self:SimpleTimer( fallTime / random( 1, 4 ), function() 
 					if self:IsPanicking() then return end
+
+					if !useWeapons then self:RetreatFrom( attacker, 30 ) end
 					self:PlaySoundFile( self:GetVoiceLine( "panic" ), true ) 
 				end )
 
 				if ignoreDowned:GetBool() then
-					local attacker = dmginfo:GetAttacker()
 					if LambdaIsValid( attacker ) and attacker.IsLambdaPlayer and attacker:InCombat() and attacker:GetEnemy() == self then
 						attacker:OnOtherKilled( self, dmginfo )
 					end
@@ -479,12 +485,14 @@ local function InitializeModule()
 					end
 				end
 
-				self:SetIsDowned( true )
+				self.Downed = true
 				self.AlreadyWasDowned = true
 				self.l_Downer = dmginfo:GetAttacker()
 				self.NextHPTimePain = CurTime() + 1.0
-				self.ReviveNumber = 0
 				self.DownedTime = CurTime() + reviveTime:GetFloat()
+				
+				self:SetNWBool( "Downed", true )
+				self:SetNW2Float( "lambda_mwii_reviveprogress", 0 )
 
 				return true
 			end
@@ -499,7 +507,9 @@ local function InitializeModule()
 	        self:SetCrouchSpeed( self.l_PreDownedData[ "CrouchSpeed" ] )
 		    self.loco:SetJumpHeight( self.l_PreDownedData[ "JumpHeight" ] )
 
-	    	self:SetIsDowned( false )
+			self.Downed = false
+			self:SetNWBool( "Downed", false )
+
 		    table_Empty( self.l_PreDownedData )
 		end
 

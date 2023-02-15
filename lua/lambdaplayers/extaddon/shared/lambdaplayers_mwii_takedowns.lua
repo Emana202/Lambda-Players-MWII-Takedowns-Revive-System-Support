@@ -136,7 +136,7 @@ local function InitializeModule()
 		        	
 		        	local target = self.TakedowningTarget
 			        self:NamedTimer( "MWIITakedown_FollowModel", 0, 0, function()
-	        			if !self:Alive() or !IsValid( tkBD ) then return true end
+	        			if !self:Alive() or !IsValid( tkBD ) or !self.Takedowning then return true end
 	        			
 	        			local rootPos = tkBD:GetBonePosition( 0 )
 	        			local bdPos = ( rootPos - self:GetUp() * ( self:WorldSpaceCenter():Distance( self:GetPos() ) ) )
@@ -194,9 +194,11 @@ local function InitializeModule()
 
 		local function PreLambdaOnKilled( self, dmginfo )
 			if self.Takedowning then 
-	        	self.l_isfrozen = false
-				if CurTime() <= self.TakedownTime and IsValid( self.TakedownNPC ) then self.TakedownNPC:Finish() end
+	        	self.WasTakedowning = true
 				self:DrawShadow( false )
+				if CurTime() <= self.TakedownTime and IsValid( self.TakedownNPC ) then 
+					self.TakedownNPC:Finish() 
+				end
 			end
 			self:l_Takedowns_OldLambdaOnKilled( dmginfo )
 		end
@@ -235,7 +237,7 @@ local function InitializeModule()
 
 			        if downBehav == 0 or downBehav == 1 and IsDowned or downBehav == 2 and !IsDowned then
 				        local isBehind = LambdaIsAtBack( self, ene )
-				        if CurTime() > self.l_TakedownCheckTime and ( isBehind and self:IsInRange( ene, 70 ) or IsDowned and self:IsInRange( ene, 32 ) ) then
+				        if CurTime() > self.l_TakedownCheckTime and ( isBehind and self:IsInRange( ene, 70 ) or IsDowned and self:IsInRange( ene, 32 ) ) and self:CanSee( ene ) then
 				        	self:NPC_Takedown( ene )
 				        elseif IsDowned or isBehind and ( ene:IsPlayer() and self:IsInRange( ene, 325 ) or ene.IsLambdaPlayer and ( ene:GetState() != "Combat" or ene:GetEnemy() != self ) or ene:IsNPC() and ene.GetEnemy and ene:GetEnemy() != self ) then
 			                self.l_PrevKeepDistance = self.l_CombatKeepDistance
@@ -262,66 +264,71 @@ local function InitializeModule()
 		end
 
 		local function OnKilled( self, dmginfo )
-        	self.l_isfrozen = false
+			if self.WasTakedowning then
+	        	self.l_isfrozen = false
+				self:RemoveNamedTimer( "MWIITakedown_Finish" )
 
-			local target = self.TakedowningTarget
-			if IsValid( target ) and target.IsLambdaPlayer then 
-        		target.l_isfrozen = false
-	            
-				target.Takedowning = false
-				target.TakedownNPC = NULL
-				target.TakedowningTarget = NULL
-				target.TakedownTime = CurTime()
-
-				if target:Alive() then
-					if dmginfo:GetAttacker() != self and dmginfo:GetAttacker() != target then
-					    if self.AddFriend and random( 1, 100 ) <= 25 then
-					        self:AddFriend( dmginfo:GetAttacker() )
-					    end
-
-						if random( 1, 100 ) <= self:GetVoiceChance() then
-							target:PlaySoundFile( target:GetVoiceLine( "assist" ) )
-						end
-					end
-
-					target:ClientSideNoDraw( target, false )
-				    
-				    local wepNoDraw = target:IsWeaponMarkedNodraw()
-			        target:ClientSideNoDraw( target.WeaponEnt, wepNoDraw )
-			        target.WeaponEnt:SetNoDraw( wepNoDraw )
-			        target.WeaponEnt:DrawShadow( !wepNoDraw )
-			    end
-			end
-
-			local finisher = self.TakedownFinisher
-			self:SimpleTimer( 0.1, function()
-				if !IsValid( finisher ) then return end
-
-				local tkNPC = finisher.TakedownNPC
-				if finisher.TakedownIsFinished or !IsValid( tkNPC ) then return end
-
-				tkNPC:Finish()
-				finisher.l_isfrozen = false
-	            finisher.Takedowning = false
-	            finisher.TakedowningTarget = nil
-
-				if finisher:Alive() then
-	            	finisher:ClientSideNoDraw( self, false )
+				local target = self.TakedowningTarget
+				if IsValid( target ) and target.IsLambdaPlayer then 
+	        		target.l_isfrozen = false
 		            
-		            local wepNoDraw = finisher:IsWeaponMarkedNodraw()
-		            finisher:ClientSideNoDraw( finisher.WeaponEnt, wepNoDraw )
-			        finisher.WeaponEnt:SetNoDraw( wepNoDraw )
-			        finisher.WeaponEnt:DrawShadow( !wepNoDraw )
-			    end
-			end, true )
+					target.Takedowning = false
+					target.TakedownNPC = NULL
+					target.TakedowningTarget = NULL
+					target.TakedownTime = CurTime()
 
-			self.Takedowning = false
-			self.TakedownNPC = NULL
-			self.TakedowningTarget = NULL
-			self.TakedownFinisher = NULL
-			self.TakedownTime = CurTime()
-			
-			self:SetNWBool( "HeadBlowMWII", false )
+					if target:Alive() then
+						if dmginfo:GetAttacker() != self and dmginfo:GetAttacker() != target then
+						    if self.AddFriend and random( 1, 100 ) <= 25 then
+						        self:AddFriend( dmginfo:GetAttacker() )
+						    end
+
+							if random( 1, 100 ) <= self:GetVoiceChance() then
+								target:PlaySoundFile( target:GetVoiceLine( "assist" ) )
+							end
+						end
+
+						target:ClientSideNoDraw( target, false )
+					    
+					    local wepNoDraw = target:IsWeaponMarkedNodraw()
+				        target:ClientSideNoDraw( target.WeaponEnt, wepNoDraw )
+				        target.WeaponEnt:SetNoDraw( wepNoDraw )
+				        target.WeaponEnt:DrawShadow( !wepNoDraw )
+				    end
+				end
+
+				local finisher = self.TakedownFinisher
+				self:SimpleTimer( 0.1, function()
+					if !IsValid( finisher ) then return end
+
+					local tkNPC = finisher.TakedownNPC
+					if finisher.TakedownIsFinished or !IsValid( tkNPC ) then return end
+
+					tkNPC:Finish()
+		        	finisher:RemoveNamedTimer( "MWIITakedown_Finish" )
+					finisher.l_isfrozen = false
+		            finisher.Takedowning = false
+		            finisher.TakedowningTarget = nil
+
+					if finisher:Alive() then
+		            	finisher:ClientSideNoDraw( self, false )
+			            
+			            local wepNoDraw = finisher:IsWeaponMarkedNodraw()
+			            finisher:ClientSideNoDraw( finisher.WeaponEnt, wepNoDraw )
+				        finisher.WeaponEnt:SetNoDraw( wepNoDraw )
+				        finisher.WeaponEnt:DrawShadow( !wepNoDraw )
+				    end
+				end, true )
+
+				self.WasTakedowning = false
+				self.Takedowning = false
+				self.TakedownNPC = NULL
+				self.TakedowningTarget = NULL
+				self.TakedownFinisher = NULL
+				self.TakedownTime = CurTime()
+
+				self:SetNWBool( "HeadBlowMWII", false )
+			end
 		end
 
 		hook.Add( "LambdaOnInitialize", hookName .. "OnInitialize", OnInitialize )
