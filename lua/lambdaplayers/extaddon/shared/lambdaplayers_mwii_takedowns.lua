@@ -44,14 +44,31 @@ local function InitializeModule()
 
 		local function OnLambdaTakedown( self, isVictim )
 	        self.l_isfrozen = true
-
 	        self:ClientSideNoDraw( self, true )
-	        self:ClientSideNoDraw( self.WeaponEnt, true )
 
+	        self:ClientSideNoDraw( self.WeaponEnt, true )
 	        self.WeaponEnt:SetNoDraw( true )
 	        self.WeaponEnt:DrawShadow( false )
 
-	        if isVictim then
+	        local tkNPC = NULL
+	        for _, v in ipairs( ents_FindByClass( "mwii_takedown_npc" ) ) do
+	        	if IsValid( v ) and v.NPC == self then tkNPC = v; break end
+	        end
+	        if !tkNPC then return end
+	        	
+	        self.TakedownNPC = tkNPC
+        	
+        	local tkBD = tkNPC.bd
+        	if IsValid( tkBD ) then
+        		if !IsSinglePlayer() or serverRagdolls:GetBool() then self.l_BecomeRagdollEntity = tkBD end
+
+	        	net.Start( "lambda_mwii_setplayercolor" )
+	        		net.WriteEntity( tkBD )
+	        		net.WriteVector( self:GetPlyColor() )
+	        	net.Broadcast()
+        	end
+
+        	if isVictim then
 		        if random( 1, 100 ) <= self:GetVoiceChance() then
 		            self:SimpleTimer( Rand( 0.33, 1.0 ), function() self:PlaySoundFile( self:GetVoiceLine( "panic" ) ) end )
 		        end
@@ -62,100 +79,81 @@ local function InitializeModule()
 		        	v:SetEnemy( NULL )
 		        	v:CancelMovement()
 		        end
-		    end
 
-	        local tkNPC = NULL
-	        for _, v in ipairs( ents_FindByClass( "mwii_takedown_npc" ) ) do
-	        	if IsValid( v ) and v.NPC == self then tkNPC = v; break end
-	        end
-	        if tkNPC then
-	        	self.TakedownNPC = tkNPC
-	        	
-	        	local finishTime = CurTime() + tkNPC.Delay
-	        	self.TakedownTime = finishTime
-
-	        	if !isVictim then
-		        	if random( 1, 100 ) <= self:GetVoiceChance() then
-			        	self:SimpleTimer( tkNPC.Delay / Rand( 1.25, 1.5 ), function()
-			        		if self:IsSpeaking() then return end
-			        		self:PlaySoundFile( self:GetVoiceLine( "kill" ) ) 
-			        	end )
+        		local wepent = self.WeaponEnt
+		        if IsValid( tkBD ) and IsValid( wepent ) and !self:IsWeaponMarkedNodraw() then
+			        local hasMWWep = false
+		        	if !self:IsDowned() then
+			        	for _, ent in ipairs( self:GetChildren() ) do
+			        		if !IsValid( ent ) then continue end 
+			        		local entMdl = ent:GetModel()
+			        		if entMdl and string.StartWith( entMdl, "models/tdmg/wep/" ) then 
+			        			hasMWWep = true 
+			        			break
+			        		end
+			        	end
 			        end
 
-			        self:NamedTimer( "MWIITakedown_Finish", tkNPC.Delay, 1, function()
-	    				self.l_isfrozen = false
-			            self:ClientSideNoDraw( self, false )
+		        	if !hasMWWep then
+		        		local fakeWep = ents.Create( "base_anim" )
+		        		fakeWep:SetModel( wepent:GetModel() )
+		        		fakeWep:SetPos( wepent:GetPos() )
+		        		fakeWep:SetAngles( wepent:GetAngles() )
+				        fakeWep:SetParent( tkBD, wepent:GetParentAttachment() )
+				        fakeWep:Spawn()
+        				fakeWep:SetNW2Vector( "lambda_weaponcolor", wepent:GetNW2Vector( "lambda_weaponcolor" ) )
+				        if wepent:IsEffectActive( EF_BONEMERGE ) then fakeWep:AddEffects( EF_BONEMERGE ) end
+				        tkBD:DeleteOnRemove( fakeWep )
+			    	end
+		        end
+		    elseif random( 1, 100 ) <= self:GetVoiceChance() then
+	        	self:SimpleTimer( tkNPC.Delay / Rand( 1.25, 1.5 ), function()
+	        		if self:IsSpeaking() then return end
+	        		self:PlaySoundFile( self:GetVoiceLine( "kill" ) ) 
+		        end )
+		    end
 
-			            self.Takedowning = false
-			            self.TakedowningTarget = nil
+	        local thinkFinishTime = CurTime() + tkNPC.Delay
+	        self:NamedTimer( "MWIITakedown_FakeThink", 0, 0, function()
+	        	local tkPartner = ( isVictim and self.TakedownFinisher or self.TakedowningTarget )
+	        	local partnerDead = ( !self.TakedownIsFinished and ( !IsValid( tkPartner ) or tkPartner.IsLambdaPlayer and !tkPartner:Alive() ) )
 
+				if CurTime() > thinkFinishTime or !self.Takedowning or !self:Alive() or partnerDead then
+    				if partnerDead then tkNPC:Finish() end
+
+    				self.l_isfrozen = false
+		            self.Takedowning = false
+		            self.TakedowningTarget = nil
+
+		            if self:Alive() then
+		            	self:ClientSideNoDraw( self, false )
+			            
 			            local wepNoDraw = self:IsWeaponMarkedNodraw()
 			            self:ClientSideNoDraw( self.WeaponEnt, wepNoDraw )
 				        self.WeaponEnt:SetNoDraw( wepNoDraw )
 				        self.WeaponEnt:DrawShadow( !wepNoDraw )
-
-				        return true
-			        end )
-			    end
-
-	        	local tkBD = tkNPC.bd
-	        	if IsValid( tkBD ) then
-	        		if !IsSinglePlayer() or serverRagdolls:GetBool() then self.l_BecomeRagdollEntity = tkBD end
-
-		        	net.Start( "lambda_mwii_setplayercolor" )
-		        		net.WriteEntity( tkBD )
-		        		net.WriteVector( self:GetPlyColor() )
-		        	net.Broadcast()
-
-	        		local wepent = self.WeaponEnt
-	        		if isVictim and IsValid( wepent ) and !self:IsWeaponMarkedNodraw() then
-				        local hasMWWep = false
-			        	if !self:IsDowned() then
-				        	for _, ent in ipairs( self:GetChildren() ) do
-				        		if !IsValid( ent ) then continue end 
-				        		local entMdl = ent:GetModel()
-				        		if entMdl and string.StartWith( entMdl, "models/tdmg/wep/" ) then 
-				        			hasMWWep = true 
-				        			break
-				        		end
-				        	end
-				        end
-
-			        	if !hasMWWep then
-			        		local fakeWep = ents.Create( "base_anim" )
-			        		fakeWep:SetModel( wepent:GetModel() )
-			        		fakeWep:SetPos( wepent:GetPos() )
-			        		fakeWep:SetAngles( wepent:GetAngles() )
-					        fakeWep:SetParent( tkBD, wepent:GetParentAttachment() )
-					        fakeWep:Spawn()
-	        				fakeWep:SetNW2Vector( "lambda_weaponcolor", wepent:GetNW2Vector( "lambda_weaponcolor" ) )
-					        if wepent:IsEffectActive( EF_BONEMERGE ) then fakeWep:AddEffects( EF_BONEMERGE ) end
-					        tkBD:DeleteOnRemove( fakeWep )
-				    	end
 				    end
-		        	
-		        	local target = self.TakedowningTarget
-			        self:NamedTimer( "MWIITakedown_FollowModel", 0, 0, function()
-	        			if !self:Alive() or !IsValid( tkBD ) or !self.Takedowning then return true end
-	        			
-	        			local rootPos = tkBD:GetBonePosition( 0 )
-	        			local bdPos = ( rootPos - self:GetUp() * ( self:WorldSpaceCenter():Distance( self:GetPos() ) ) )
 
-			        	trTbl.start = rootPos
-			        	trTbl.endpos = bdPos
-			        	trTbl.mins = self:OBBMins()
-			        	trTbl.maxs = self:OBBMaxs()
-
-			        	trTbl.filter[ 1 ] = self
-			        	trTbl.filter[ 2 ] = tkNPC
-			        	trTbl.filter[ 3 ] = tkBD
-			        	trTbl.filter[ 4 ] = target
-
-			        	self:SetPos( TraceHull( trTbl ).HitPos )
-			        	if CurTime() > finishTime then return true end
-			        end, true )
+			        return true
 	        	end
-	        end
+
+				if IsValid( tkBD ) then
+        			local rootPos = tkBD:GetBonePosition( 0 )
+        			local bdPos = ( rootPos - self:GetUp() * ( self:WorldSpaceCenter():Distance( self:GetPos() ) ) )
+
+		        	trTbl.start = rootPos
+		        	trTbl.endpos = bdPos
+		        	trTbl.mins = self:OBBMins()
+		        	trTbl.maxs = self:OBBMaxs()
+
+		        	trTbl.filter[ 1 ] = self
+		        	trTbl.filter[ 2 ] = tkNPC
+		        	trTbl.filter[ 3 ] = tkBD
+		        	trTbl.filter[ 4 ] = self.TakedowningTarget
+
+		        	self:SetPos( TraceHull( trTbl ).HitPos )
+				end
+	        end )
 
 	        return tkNPC
 		end
@@ -192,30 +190,12 @@ local function InitializeModule()
 	        end
 		end
 
-		local function PreLambdaOnKilled( self, dmginfo )
-			if self.Takedowning then 
-	        	self.WasTakedowning = true
-				self:DrawShadow( false )
-				if CurTime() <= self.TakedownTime and IsValid( self.TakedownNPC ) then 
-					self.TakedownNPC:Finish() 
-				end
-			end
-			self:l_Takedowns_OldLambdaOnKilled( dmginfo )
-		end
-
 		local function LambdaBlankFunction( self ) end
 
 		local function OnInitialize( self )
-			self.l_Takedowns_OldLambdaOnKilled = self.LambdaOnKilled
-			self.LambdaOnKilled = PreLambdaOnKilled
-
-			self.Takedowning = false
-			self.TakedownNPC = NULL
-			self.TakedowningTarget = NULL
-			self.TakedownTime = CurTime()
-			self.l_TakedownCheckTime = CurTime() + Rand( 0.1, 0.25 )
-			
 			self.GetActiveWeapon = LambdaBlankFunction
+			
+			self.l_TakedownCheckTime = CurTime() + Rand( 0.1, 0.25 )
 		end
 
 		local LambdaIsAtBack = plyMeta.IsAtBack
@@ -231,7 +211,7 @@ local function InitializeModule()
 
 	        if enableTakedowns:GetBool() and self:GetState() == "Combat" and !self:IsDowned() and !self.Takedowning and table_HasValue( takedownNPCsClassList, "npc_lambdaplayer" ) then
 	        	local ene = self:GetEnemy()
-	        	if LambdaIsValid( ene ) and !ene.Takedowning and ene:Health() > 0 and ( ene:IsPlayer() and ene:Alive() and !ene:HasGodMode() and takedownPlayers:GetBool() or ( ene:IsNPC() or ene:IsNextBot() ) and ( takedownAllNPCs:GetBool() or table_HasValue( takedownedNPCsClassList, ene:GetClass() ) ) ) then
+	        	if IsValid( ene ) and !ene.Takedowning and ene:Health() > 0 and ( ( ene.IsLambdaPlayer or ene:IsPlayer() and takedownPlayers:GetBool() ) and ene:Alive() and !ene:HasGodMode() or ( ene:IsNPC() or ene:IsNextBot() and !ene.IsLambdaPlayer ) and ( takedownAllNPCs:GetBool() or table_HasValue( takedownedNPCsClassList, ene:GetClass() ) ) ) then
 			        local IsDowned = ene:IsDowned()
 			        local downBehav = downedBehavior:GetInt()
 
@@ -239,16 +219,20 @@ local function InitializeModule()
 				        local isBehind = LambdaIsAtBack( self, ene )
 				        if CurTime() > self.l_TakedownCheckTime and ( isBehind and self:IsInRange( ene, 70 ) or IsDowned and self:IsInRange( ene, 32 ) ) and self:CanSee( ene ) then
 				        	self:NPC_Takedown( ene )
-				        elseif IsDowned or isBehind and ( ene:IsPlayer() and self:IsInRange( ene, 325 ) or ene.IsLambdaPlayer and ( ene:GetState() != "Combat" or ene:GetEnemy() != self ) or ene:IsNPC() and ene.GetEnemy and ene:GetEnemy() != self ) then
-			                self.l_PrevKeepDistance = self.l_CombatKeepDistance
-			                self.l_CombatKeepDistance = 0
+				        else
+				        	local eneTarget = ( ene.GetEnemy and ene:GetEnemy() or NULL )
+				        	
+				        	if IsDowned or isBehind and ( ( ene:IsPlayer() and self:IsInRange( ene, 325 ) or ene.IsLambdaPlayer and ( !ene:InCombat() or eneTarget != self ) or eneTarget != self ) and ( !self.IsFriendsWith or !self.IsFriendsWith( eneTarget ) ) and ( !LambdaTeams or !LambdaTeams:AreTeammates( self, eneTarget ) ) ) then
+				                self.l_PrevKeepDistance = self.l_CombatKeepDistance
+				                self.l_CombatKeepDistance = 0
 
-			                if !IsDowned or ene.IsLambdaPlayer and ( !ene:HasLethalWeapon() or ene:GetState() != "Combat" or ene:GetEnemy() != self ) or ene:IsPlayer() and !plyDownedWep:GetBool() or ene:IsNPC() and !npcDownedWep:GetBool() then
-				                self.l_PrevAttackDistance = self.l_CombatAttackRange
-				                self.l_CombatAttackRange = 0
+				                if !IsDowned or ene.IsLambdaPlayer and ( !ene:HasLethalWeapon() or ene:GetState() != "Combat" or ene:GetEnemy() != self ) or ene:IsPlayer() and !plyDownedWep:GetBool() or ene:IsNPC() and !npcDownedWep:GetBool() then
+					                self.l_PrevAttackDistance = self.l_CombatAttackRange
+					                self.l_CombatAttackRange = 0
+					            end
+
+				                self.l_movepos = ( ene:GetPos() - ene:GetForward() * 32 )
 				            end
-
-			                self.l_movepos = ( ene:GetPos() - ene:GetForward() * 32 )
 			        	end
 			        end
 	        	end
@@ -264,70 +248,32 @@ local function InitializeModule()
 		end
 
 		local function OnKilled( self, dmginfo )
-			if self.WasTakedowning then
-	        	self.l_isfrozen = false
-				self:RemoveNamedTimer( "MWIITakedown_Finish" )
+			self:SetNWBool( "HeadBlowMWII", false )
+			self:RemoveNamedTimer( "MWIITakedown_FakeThink" )
 
-				local target = self.TakedowningTarget
-				if IsValid( target ) and target.IsLambdaPlayer then 
-	        		target.l_isfrozen = false
-		            
-					target.Takedowning = false
-					target.TakedownNPC = NULL
-					target.TakedowningTarget = NULL
-					target.TakedownTime = CurTime()
-
-					if target:Alive() then
-						if dmginfo:GetAttacker() != self and dmginfo:GetAttacker() != target then
-						    if self.AddFriend and random( 1, 100 ) <= 25 then
-						        self:AddFriend( dmginfo:GetAttacker() )
-						    end
-
-							if random( 1, 100 ) <= self:GetVoiceChance() then
-								target:PlaySoundFile( target:GetVoiceLine( "assist" ) )
-							end
-						end
-
-						target:ClientSideNoDraw( target, false )
-					    
-					    local wepNoDraw = target:IsWeaponMarkedNodraw()
-				        target:ClientSideNoDraw( target.WeaponEnt, wepNoDraw )
-				        target.WeaponEnt:SetNoDraw( wepNoDraw )
-				        target.WeaponEnt:DrawShadow( !wepNoDraw )
-				    end
+			if IsValid( self.TakedownNPC ) then
+				local tkTarget = self.TakedowningTarget
+				if LambdaIsValid( tkTarget ) and tkTarget.IsLambdaPlayer then
+					local attacker = dmginfo:GetAttacker()
+					if attacker != self and attacker != target then
+					    if self.AddFriend and random( 1, 100 ) <= 33 then self:AddFriend( attacker ) end
+						if random( 1, 100 ) <= self:GetVoiceChance() then attacker:PlaySoundFile( attacker:GetVoiceLine( "assist" ) ) end
+					end
 				end
-
-				local finisher = self.TakedownFinisher
-				self:SimpleTimer( 0.1, function()
-					if !IsValid( finisher ) then return end
-
-					local tkNPC = finisher.TakedownNPC
-					if finisher.TakedownIsFinished or !IsValid( tkNPC ) then return end
-
-					tkNPC:Finish()
-		        	finisher:RemoveNamedTimer( "MWIITakedown_Finish" )
-					finisher.l_isfrozen = false
-		            finisher.Takedowning = false
-		            finisher.TakedowningTarget = nil
-
-					if finisher:Alive() then
-		            	finisher:ClientSideNoDraw( self, false )
-			            
-			            local wepNoDraw = finisher:IsWeaponMarkedNodraw()
-			            finisher:ClientSideNoDraw( finisher.WeaponEnt, wepNoDraw )
-				        finisher.WeaponEnt:SetNoDraw( wepNoDraw )
-				        finisher.WeaponEnt:DrawShadow( !wepNoDraw )
-				    end
-				end, true )
-
-				self.WasTakedowning = false
-				self.Takedowning = false
-				self.TakedownNPC = NULL
 				self.TakedowningTarget = NULL
-				self.TakedownFinisher = NULL
-				self.TakedownTime = CurTime()
 
-				self:SetNWBool( "HeadBlowMWII", false )
+				local tkFinisher = self.TakedownFinisher
+				if IsValid( tkFinisher ) then tkFinisher.TakedownIsFinished = true end
+				self.TakedownFinisher = NULL
+
+				self.TakedownNPC:Finish()
+				self.TakedownNPC = NULL
+
+	        	self.l_isfrozen = false
+				self:DrawShadow( false )
+
+				self.Takedowning = false
+				self.WasTakedowning = false
 			end
 		end
 
