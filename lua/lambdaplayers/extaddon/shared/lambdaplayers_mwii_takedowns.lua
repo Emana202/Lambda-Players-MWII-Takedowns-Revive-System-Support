@@ -114,9 +114,9 @@ local function InitializeModule()
 		    end
 
 	        local thinkFinishTime = CurTime() + tkNPC.Delay
-	        self:NamedTimer( "MWIITakedown_FakeThink", 0, 0, function()
+	        self:NamedTimer( "MWIITakedown_FakeThink", 0.1, 0, function()
 	        	local tkPartner = ( isVictim and self.TakedownFinisher or self.TakedowningTarget )
-	        	local partnerDead = ( !self.TakedownIsFinished and ( !IsValid( tkPartner ) or tkPartner.IsLambdaPlayer and !tkPartner:Alive() ) )
+	        	local partnerDead = ( !self.TakedownIsFinished and !LambdaIsValid( tkPartner ) )
 
 				if CurTime() > thinkFinishTime or !self.Takedowning or !self:Alive() or partnerDead then
     				if partnerDead then tkNPC:Finish() end
