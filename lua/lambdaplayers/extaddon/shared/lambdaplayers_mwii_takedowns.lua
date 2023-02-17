@@ -40,7 +40,6 @@ local function InitializeModule()
 		local npcDownedWep = GetConVar( "mwii_revive_npc_canshoot" )
 		local takedownPlayers = GetConVar( "mwii_takedown_npcs_canusetakedowns_players" )
 		local takedownAllNPCs = GetConVar( "mwii_takedown_npcs_canusetakedowns_allnpcs" )
-		local serverRagdolls = GetConVar( "lambdaplayers_lambda_serversideragdolls" )
 
 		local function OnLambdaTakedown( self, isVictim )
 	        self.l_isfrozen = true
@@ -60,7 +59,7 @@ local function InitializeModule()
         	
         	local tkBD = tkNPC.bd
         	if IsValid( tkBD ) then
-        		if !IsSinglePlayer() or serverRagdolls:GetBool() then self.l_BecomeRagdollEntity = tkBD end
+        		self.l_BecomeRagdollEntity = tkBD
 
 	        	net.Start( "lambda_mwii_setplayercolor" )
 	        		net.WriteEntity( tkBD )
@@ -114,12 +113,12 @@ local function InitializeModule()
 		    end
 
 	        local thinkFinishTime = CurTime() + tkNPC.Delay
-	        self:NamedTimer( "MWIITakedown_FakeThink", 0.1, 0, function()
+	        self:NamedTimer( "MWIITakedown_FakeThink", 0, 0, function()
 	        	local tkPartner = ( isVictim and self.TakedownFinisher or self.TakedowningTarget )
-	        	local partnerDead = ( !self.TakedownIsFinished and !LambdaIsValid( tkPartner ) )
+	        	local partnerDead = ( !self.TakedownIsFinished and ( !IsValid( tkPartner ) or tkPartner.IsLambdaPlayer and !tkPartner:Alive() and !tkPartner.Takedowning ) )
 
 				if CurTime() > thinkFinishTime or !self.Takedowning or !self:Alive() or partnerDead then
-    				if partnerDead then tkNPC:Finish() end
+    				if partnerDead and IsValid( tkNPC ) then tkNPC:Finish() end
 
     				self.l_isfrozen = false
 		            self.Takedowning = false
@@ -262,18 +261,13 @@ local function InitializeModule()
 				end
 				self.TakedowningTarget = NULL
 
-				local tkFinisher = self.TakedownFinisher
-				if IsValid( tkFinisher ) then tkFinisher.TakedownIsFinished = true end
-				self.TakedownFinisher = NULL
-
-				self.TakedownNPC:Finish()
-				self.TakedownNPC = NULL
-
 	        	self.l_isfrozen = false
-				self:DrawShadow( false )
 
-				self.Takedowning = false
-				self.WasTakedowning = false
+				self:SimpleTimer( 0, function() 
+					self.TakedownNPC:Finish() 
+					self.TakedownNPC = NULL
+					self:DrawShadow( false )
+				end, true )
 			end
 		end
 
