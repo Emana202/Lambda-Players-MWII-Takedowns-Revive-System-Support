@@ -251,6 +251,8 @@ local function InitializeModule()
 			self:RemoveNamedTimer( "MWIITakedown_FakeThink" )
 
 			if IsValid( self.TakedownNPC ) then
+	        	self.l_isfrozen = false
+
 				local tkTarget = self.TakedowningTarget
 				if LambdaIsValid( tkTarget ) and tkTarget.IsLambdaPlayer then
 					local attacker = dmginfo:GetAttacker()
@@ -261,9 +263,8 @@ local function InitializeModule()
 				end
 				self.TakedowningTarget = NULL
 
-	        	self.l_isfrozen = false
-
 				self:SimpleTimer( 0, function() 
+					if !IsValid( self.TakedownNPC ) then return end
 					self.TakedownNPC:Finish() 
 					self.TakedownNPC = NULL
 					self:DrawShadow( false )
