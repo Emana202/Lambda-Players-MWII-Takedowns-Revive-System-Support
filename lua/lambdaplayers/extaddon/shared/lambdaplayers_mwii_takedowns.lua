@@ -114,7 +114,7 @@ local function InitializeModule()
 
 	        local thinkFinishTime = CurTime() + tkNPC.Delay
 	        self:NamedTimer( "MWIITakedown_FakeThink", 0, 0, function()
-	        	local tkPartner = ( isVictim and self.TakedownFinisher or self.TakedowningTarget )
+	        	local tkPartner = ( isVictim and self.TakedownFinisher or !isVictim and self.TakedowningTarget or nil )
 	        	local partnerDead = ( !self.TakedownIsFinished and ( !IsValid( tkPartner ) or tkPartner.IsLambdaPlayer and !tkPartner:Alive() and !tkPartner.Takedowning ) )
 
 				if CurTime() > thinkFinishTime or !self.Takedowning or !self:Alive() or partnerDead then
@@ -168,6 +168,7 @@ local function InitializeModule()
 	        local target = self.TakedowningTarget
 	        if !IsValid( target ) or !target.IsLambdaPlayer then return end
 
+        	target.TakedownFinisher = self
         	OnLambdaTakedown( target, true )
 		end
 
@@ -248,7 +249,6 @@ local function InitializeModule()
 
 		local function OnKilled( self, dmginfo )
 			self:SetNWBool( "HeadBlowMWII", false )
-			self:RemoveNamedTimer( "MWIITakedown_FakeThink" )
 
 			if IsValid( self.TakedownNPC ) then
 	        	self.l_isfrozen = false
@@ -262,11 +262,13 @@ local function InitializeModule()
 					end
 				end
 				self.TakedowningTarget = NULL
+				self.TakedownFinisher = NULL
 
 				self:SimpleTimer( 0, function() 
 					if !IsValid( self.TakedownNPC ) then return end
 					self.TakedownNPC:Finish() 
 					self.TakedownNPC = NULL
+					self.Takedowning = false
 					self:DrawShadow( false )
 				end, true )
 			end
