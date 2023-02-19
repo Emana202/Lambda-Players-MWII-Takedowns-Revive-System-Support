@@ -172,7 +172,6 @@ local function InitializeModule()
 			        ply:SetRunSpeed( ply.l_PreDownedData[ "RunSpeed" ] )
 			        ply:SetWalkSpeed( ply.l_PreDownedData[ "WalkSpeed" ] )
 			        ply:SetCrouchSpeed( ply.l_PreDownedData[ "CrouchSpeed" ] )
-				    ply.loco:SetJumpHeight( ply.l_PreDownedData[ "JumpHeight" ] )
 
 					ply.Downed = false
 					ply:SetNWBool( "Downed", false )
@@ -409,6 +408,10 @@ local function InitializeModule()
 			if self:IsDowned() then return true end
 		end
 
+		local function OnJump( self )
+			if self:IsDowned() then return true end
+		end
+
 		local function OnCanTarget( self, target )
 			if target:IsDowned() and ignoreDowned:GetBool() then return true end
 			if self:IsDowned() and !self:HasLethalWeapon() then return true end
@@ -431,13 +434,11 @@ local function InitializeModule()
 				self.l_PreDownedData[ "RunSpeed" ] = self:GetRunSpeed()
 				self.l_PreDownedData[ "WalkSpeed" ] = self:GetWalkSpeed()
 				self.l_PreDownedData[ "CrouchSpeed" ] = self:GetCrouchSpeed()
-				self.l_PreDownedData[ "JumpHeight" ] = self.loco:GetJumpHeight()
 
 				self:CancelMovement()
 		        self:SetRunSpeed( 25 )
 		        self:SetCrouchSpeed( 25 )
 		        self:SetWalkSpeed( 25 )
-		        self.loco:SetJumpHeight( 0 )
 
 				local wepDelay = Rand( 0.33, 0.8 )
 				local curCooldown = self.l_WeaponUseCooldown
@@ -505,7 +506,6 @@ local function InitializeModule()
 	        self:SetRunSpeed( self.l_PreDownedData[ "RunSpeed" ] )
 	        self:SetWalkSpeed( self.l_PreDownedData[ "WalkSpeed" ] )
 	        self:SetCrouchSpeed( self.l_PreDownedData[ "CrouchSpeed" ] )
-		    self.loco:SetJumpHeight( self.l_PreDownedData[ "JumpHeight" ] )
 
 			self.Downed = false
 			self:SetNWBool( "Downed", false )
@@ -517,6 +517,7 @@ local function InitializeModule()
 		hook.Add( "LambdaOnThink", hookName .. "OnThink", OnThink )
 		hook.Add( "LambdaOnBeginMove", hookName .. "OnBeginMove", OnBeginMove )
 		hook.Add( "LambdaFootStep", hookName .. "OnFootStep", OnFootStep )
+		hook.Add( "LambdaOnJump", hookName .. "OnJump", OnJump )
 		hook.Add( "LambdaCanTarget", hookName .. "OnCanTarget", OnCanTarget )
 		hook.Add( "LambdaCanSwitchWeapon", hookName .. "CanSwitchWeapon", OnCanSwitchWeapon )
 		hook.Add( "LambdaOnInjured", hookName .. "OnInjured", OnInjured )
