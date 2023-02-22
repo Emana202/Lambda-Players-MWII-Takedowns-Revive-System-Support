@@ -247,6 +247,10 @@ local function InitializeModule()
 			if target.Takedowning and !IsValid( target.TakedowningTarget ) then return true end
 		end
 
+		local function OnCanSwitchWeapon( self, name, data )
+			if self.IsTakedowning then return true end
+		end
+
 		local function OnKilled( self, dmginfo )
 			self:SetNWBool( "HeadBlowMWII", false )
 
@@ -256,9 +260,9 @@ local function InitializeModule()
 				local tkTarget = self.TakedowningTarget
 				if LambdaIsValid( tkTarget ) and tkTarget.IsLambdaPlayer then
 					local attacker = dmginfo:GetAttacker()
-					if attacker != self and attacker != target then
-					    if self.AddFriend and random( 1, 100 ) <= 33 then self:AddFriend( attacker ) end
-						if random( 1, 100 ) <= self:GetVoiceChance() then attacker:PlaySoundFile( attacker:GetVoiceLine( "assist" ) ) end
+					if attacker != self and attacker != tkTarget then
+					    if tkTarget.AddFriend and random( 1, 100 ) <= 33 then tkTarget:AddFriend( self ) end
+						if random( 1, 100 ) <= tkTarget:GetVoiceChance() then tkTarget:PlaySoundFile( tkTarget:GetVoiceLine( "assist" ) ) end
 					end
 				end
 				self.TakedowningTarget = NULL
@@ -277,6 +281,7 @@ local function InitializeModule()
 		hook.Add( "LambdaOnInitialize", hookName .. "OnInitialize", OnInitialize )
 		hook.Add( "LambdaOnThink", hookName .. "OnThink", OnThink )
 		hook.Add( "LambdaCanTarget", hookName .. "OnCanTarget", OnCanTarget )
+		hook.Add( "LambdaCanSwitchWeapon", hookName .. "CanSwitchWeapon", OnCanSwitchWeapon )
 		hook.Add( "LambdaOnKilled", hookName .. "OnKilled", OnKilled )
 
 	end

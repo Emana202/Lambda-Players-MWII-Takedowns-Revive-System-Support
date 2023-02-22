@@ -201,7 +201,7 @@ local function InitializeModule()
 		                end
 
 						ply:LookTo( reviver, 1.0 )
-						ply:SimpleTimer( ( standTime / random( 1, 4 ) ), function() ply:PlaySoundFile( ply:GetVoiceLine( "assist" ), true ) end )
+						ply:SimpleTimer( ( standTime / random( 1, 4 ) ), function() ply:PlaySoundFile( ply:GetVoiceLine( "assist" ) ) end )
 		            end
 	        	end
 			end
@@ -312,6 +312,9 @@ local function InitializeModule()
 		                self.l_CombatAttackRange = 0
 		        	elseif self.l_IsSelfReviving then 
 		        		self.l_IsSelfReviving = false
+		        		if self:InCombat() and !self:HasLethalWeapon() then
+		        			self:SwitchToLethalWeapon()
+		        		end
 		        	end
 
 					if !reviveHPTimer:GetBool() then
@@ -378,7 +381,7 @@ local function InitializeModule()
 
 	        		if IsValid( revTarget ) then
 	        			if !self:InCombat() and random( 1, 100 ) <= self:GetVoiceChance() then
-	        				self:PlaySoundFile( self:GetVoiceLine( "witness" ), true )
+	        				self:PlaySoundFile( self:GetVoiceLine( "witness" ) )
 	        			end
 
 	        			self.l_ReviveTarget = revTarget
@@ -469,7 +472,7 @@ local function InitializeModule()
 					if self:IsPanicking() then return end
 
 					if !useWeapons then self:RetreatFrom( attacker, 30 ) end
-					self:PlaySoundFile( self:GetVoiceLine( "panic" ), true ) 
+					self:PlaySoundFile( self:GetVoiceLine( "panic" ) ) 
 				end )
 
 				if ignoreDowned:GetBool() then
