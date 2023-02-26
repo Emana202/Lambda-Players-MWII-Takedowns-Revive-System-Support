@@ -209,34 +209,32 @@ local function InitializeModule()
 	            self.l_PrevAttackDistance = nil
 	        end
 
-	        if enableTakedowns:GetBool() and self:GetState() == "Combat" and !self:IsDowned() and !self.Takedowning and table_HasValue( takedownNPCsClassList, "npc_lambdaplayer" ) then
+			if !self.Takedowning and !self:IsDowned() and self:GetState() == "Combat" and enableTakedowns:GetBool() and table_HasValue( takedownNPCsClassList, "npc_lambdaplayer" ) then
 	        	local ene = self:GetEnemy()
 	        	if IsValid( ene ) and !ene.Takedowning and ene:Health() > 0 and ( ( ene.IsLambdaPlayer or ene:IsPlayer() and takedownPlayers:GetBool() ) and ene:Alive() and !ene:HasGodMode() or ( ene:IsNPC() or ene:IsNextBot() and !ene.IsLambdaPlayer ) and ( takedownAllNPCs:GetBool() or table_HasValue( takedownedNPCsClassList, ene:GetClass() ) ) ) then
-			        local IsDowned = ene:IsDowned()
-			        local downBehav = downedBehavior:GetInt()
-
+					local IsDowned = ene:IsDowned()
+					local downBehav = downedBehavior:GetInt()
 			        if downBehav == 0 or downBehav == 1 and IsDowned or downBehav == 2 and !IsDowned then
 				        local isBehind = LambdaIsAtBack( self, ene )
 				        if CurTime() > self.l_TakedownCheckTime and ( isBehind and self:IsInRange( ene, 70 ) or IsDowned and self:IsInRange( ene, 32 ) ) and self:CanSee( ene ) then
 				        	self:NPC_Takedown( ene )
-				        else
-				        	local eneTarget = ( ene.GetEnemy and ene:GetEnemy() or NULL )
-				        	
-				        	if IsDowned or isBehind and ( ( ene:IsPlayer() and self:IsInRange( ene, 325 ) or ene.IsLambdaPlayer and ( !ene:InCombat() or eneTarget != self ) or eneTarget != self ) and ( !self.IsFriendsWith or !self.IsFriendsWith( eneTarget ) ) and ( !LambdaTeams or !LambdaTeams:AreTeammates( self, eneTarget ) ) ) then
-				                self.l_PrevKeepDistance = self.l_CombatKeepDistance
-				                self.l_CombatKeepDistance = 0
+						elseif IsDowned or isBehind and ( ene:IsPlayer() and self:IsInRange( ene, 300 ) or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) ) then
+							self.l_PrevKeepDistance = self.l_CombatKeepDistance
+							self.l_CombatKeepDistance = 0
 
-				                if !IsDowned or ene.IsLambdaPlayer and ( !ene:HasLethalWeapon() or ene:GetState() != "Combat" or ene:GetEnemy() != self ) or ene:IsPlayer() and !plyDownedWep:GetBool() or ene:IsNPC() and !npcDownedWep:GetBool() then
-					                self.l_PrevAttackDistance = self.l_CombatAttackRange
-					                self.l_CombatAttackRange = 0
-					            end
+							local target = ( ene.IsLambdaPlayer and ene:GetEnemy() or NULL )
+							if !LambdaIsValid( target ) or !self.IsFriendsWith or !self:IsFriendsWith( target ) or !LambdaTeams or !LambdaTeams:AreTeammates( self, target ) or !LambdaIsAtBack( ene, target ) and !target:IsDowned() then
+								if !IsDowned or ene.IsLambdaPlayer and ( !ene:HasLethalWeapon() or !ene:InCombat() or ene:GetEnemy() != self ) or ene:IsPlayer() and !plyDownedWep:GetBool() or ene:IsNPC() and !npcDownedWep:GetBool() then
+									self.l_PrevAttackDistance = self.l_CombatAttackRange
+									self.l_CombatAttackRange = 0
+								end
+							end
 
-				                self.l_movepos = ( ene:GetPos() - ene:GetForward() * 32 )
-				            end
-			        	end
-			        end
-	        	end
-	        end
+							self.l_movepos = ( ene:GetPos() - ene:GetForward() * 32 )
+						end
+					end
+				end
+			end
 
 	       	if CurTime() > self.l_TakedownCheckTime then
 	        	self.l_TakedownCheckTime = CurTime() + Rand( 0.1, 0.25 )
