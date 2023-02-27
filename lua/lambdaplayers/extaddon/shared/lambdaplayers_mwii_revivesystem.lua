@@ -303,7 +303,8 @@ local function InitializeModule()
 	        if self:IsDowned() then
 	        	local reviver = self:GetNWEntity( "Reviver" )
 	        	if !LambdaIsValid( reviver ) then 
-	        		local canSelfRevive = ( enableSelfReviving:GetBool() and self.l_UpdateDownedAnimations and !self.Takedowning and ( !self:InCombat() or !self:IsInRange( self:GetEnemy(), 1000 ) or !self:CanSee( self:GetEnemy() ) ) and ( !self:IsPanicking() or !LambdaIsValid( self.l_RetreatTarget ) or !self:IsInRange( self.l_RetreatTarget, 1000 ) and !self:CanSee( self.l_RetreatTarget ) ) )
+	        		local ene = self:GetEnemy()
+					local canSelfRevive = ( enableSelfReviving:GetBool() and self.l_UpdateDownedAnimations and !self.Takedowning and ( !self:InCombat() or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) or !self:IsInRange( ene, 1000 ) or !self:CanSee( ene ) ) and ( !self:IsPanicking() or !LambdaIsValid( self.l_RetreatTarget ) or !self:IsInRange( self.l_RetreatTarget, 1000 ) and !self:CanSee( self.l_RetreatTarget ) ) )
 	        		if !self.l_IsSelfReviving then self.l_IsSelfReviving = ( random( 1, 100 ) == 1 and canSelfRevive ) end
 
 	        		if self.l_IsSelfReviving and canSelfRevive then
