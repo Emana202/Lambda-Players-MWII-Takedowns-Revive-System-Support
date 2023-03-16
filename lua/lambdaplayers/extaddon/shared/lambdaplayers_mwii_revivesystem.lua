@@ -1,18 +1,17 @@
 if !file.Exists( "autorun/sh_mwii_survivor.lua", "LUA" ) then return end
-
 local hookName = "Lambda_MWII_ReviveSystem_"
 
-local enableDowning = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enabledowning", 1, true, false, false, "If Lambda Players can be downed if they reach zero health", 0, 1, { type = "Bool", name = "Enable Downing", category = "MWII - Revive System" } )
-local downChance = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_downchance", 100, true, false, false, "The chance a Lambda Player will get downed instead of dying", 0, 100, { type = "Slider", decimals = 0, name = "Chance To Be Downed", category = "MWII - Revive System" } )
-local downedOnce = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_downedonce", 1, true, false, false, "If Lambda Players can be downed only one time", 0, 1, { type = "Bool", name = "Downed Only Once", category = "MWII - Revive System" } )
-local enableReviving = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enablereviving", 1, true, false, false, "If Lambda Players can revive downed players other Lambda Players if they're friends or are in the same team", 0, 1, { type = "Bool", name = "Enable Reviving", category = "MWII - Revive System" } )
-local enableSelfReviving = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enableselfreviving", 1, true, false, false, "If Lambda Players can self-revive themself if they are in safe position", 0, 1, { type = "Bool", name = "Enable Self-Reviving", category = "MWII - Revive System" } )
-local enableWeapons = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enableweapons", 1, true, false, false, "If Lambda Players can use and attack with their weapons when downed", 0, 1, { type = "Bool", name = "Enable Weapon Usage", category = "MWII - Revive System" } )
-local useSpecifiedWeapon = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_usespecificweapon", 1, true, false, false, "If Lambda Player should only use weapon specified in the Downed Weapon option if weapon usage is allowed", 0, 1, { type = "Bool", name = "Use Specific Weapon Only", category = "MWII - Revive System" } )
-local forcedWeapon = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_forceweapon", "pistol", true, false, false, "The weapon Lambda Player will be forced to use when currenly downed. 'Use Specific Weapon Only' should be enabled to work", 0, 1, { type = "Combo", options = _LAMBDAWEAPONCLASSANDPRINTS, name = "Downed Weapon", category = "MWII - Revive System" } )
-local plysCanRevive = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_playerscanrevive", 1, true, false, false, "If real players can revive downed Lambda Players", 0, 1, { type = "Bool", name = "Players Can Revive Lambdas", category = "MWII - Revive System" } )
-local ignoreDowned = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_ignoredownedenemies", 0, true, false, false, "If Lambda Players should ignore enemies that are currenly downed", 0, 1, { type = "Bool", name = "Ignore Downed Enemies", category = "MWII - Revive System" } )
-local bystandersRevive = CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_bystandersrevive", 1, true, false, false, "If Lambda Players that are not friends or teammates with their revive target but are not aggresive in their personality can still revive them", 0, 1, { type = "Bool", name = "Friendly Bystanders Can Revive", category = "MWII - Revive System" } )
+local enableDowning 		= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enabledowning", 1, true, false, false, "If Lambda Players can be downed if they reach zero health", 0, 1, { type = "Bool", name = "Enable Downing", category = "MWII - Revive System" } )
+local downChance 			= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_downchance", 100, true, false, false, "The chance a Lambda Player will get downed instead of dying", 0, 100, { type = "Slider", decimals = 0, name = "Chance To Be Downed", category = "MWII - Revive System" } )
+local downedOnce 			= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_downedonce", 1, true, false, false, "If Lambda Players can be downed only one time", 0, 1, { type = "Bool", name = "Downed Only Once", category = "MWII - Revive System" } )
+local enableReviving 		= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enablereviving", 1, true, false, false, "If Lambda Players can revive downed players other Lambda Players if they're friends or are in the same team", 0, 1, { type = "Bool", name = "Enable Reviving", category = "MWII - Revive System" } )
+local enableSelfReviving 	= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enableselfreviving", 1, true, false, false, "If Lambda Players can self-revive themself if they are in safe position", 0, 1, { type = "Bool", name = "Enable Self-Reviving", category = "MWII - Revive System" } )
+local enableWeapons 		= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enableweapons", 1, true, false, false, "If Lambda Players can use and attack with their weapons when downed", 0, 1, { type = "Bool", name = "Enable Weapon Usage", category = "MWII - Revive System" } )
+local useSpecifiedWeapon 	= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_usespecificweapon", 1, true, false, false, "If Lambda Player should only use weapon specified in the Downed Weapon option if weapon usage is allowed", 0, 1, { type = "Bool", name = "Use Specific Weapon Only", category = "MWII - Revive System" } )
+local forcedWeapon 			= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_forceweapon", "pistol", true, false, false, "The weapon Lambda Player will be forced to use when currenly downed. 'Use Specific Weapon Only' should be enabled to work", 0, 1, { type = "Combo", options = _LAMBDAWEAPONCLASSANDPRINTS, name = "Downed Weapon", category = "MWII - Revive System" } )
+local plysCanRevive 		= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_playerscanrevive", 1, true, false, false, "If real players can revive downed Lambda Players", 0, 1, { type = "Bool", name = "Players Can Revive Lambdas", category = "MWII - Revive System" } )
+local ignoreDowned 			= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_ignoredownedenemies", 0, true, false, false, "If Lambda Players should ignore enemies that are currenly downed", 0, 1, { type = "Bool", name = "Ignore Downed Enemies", category = "MWII - Revive System" } )
+local bystandersRevive 		= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_bystandersrevive", 1, true, false, false, "If Lambda Players that are not friends or teammates with their revive target but are not aggresive in their personality can still revive them", 0, 1, { type = "Bool", name = "Friendly Bystanders Can Revive", category = "MWII - Revive System" } )
 
 local function InitializeModule()
 	local IsValid = IsValid
@@ -112,26 +111,27 @@ local function InitializeModule()
 		local reviveHealth = GetConVar( "mwii_revive_health" )
 		local reviveTime = GetConVar( "mwii_revive_time" )
 		local reviveHPTimer = GetConVar( "mwii_revive_hptimer" )
+		local physUpdateTime = GetConVar( "lambdaplayers_lambda_physupdatetime" )
 
 		local downedCollMins = Vector( -26, -16, 0 )
 		local downedCollMaxs = Vector( 38, 16, 24 )
 
 		local function OnServerThink()
-			if !plysCanRevive:GetBool() then return end
+			if plysCanRevive:GetBool() then
+				reviveEnemies = reviveEnemies or GetConVar( "mwii_revive_enemy" )
+				local revEnemies = reviveEnemies:GetBool()
 
-			reviveEnemies = reviveEnemies or GetConVar( "mwii_revive_enemy" )
-			local revEnemies = reviveEnemies:GetBool()
+				for _, ply in ipairs( player_GetAll() ) do
+					if !ply:Alive() or ply:IsDowned() or !ply:KeyDown( IN_USE ) then continue end
 
-			for _, ply in ipairs( player_GetAll() ) do
-	        	if !ply:Alive() or ply:IsDowned() or !ply:KeyDown( IN_USE ) then continue end
+					local tr = ply:GetEyeTrace()
+					local ent = tr.Entity
 
-	            local tr = ply:GetEyeTrace()
-	            local ent = tr.Entity
-
-	            if LambdaIsValid( ent ) and ent.IsLambdaPlayer and ent:IsDowned() and ply:EyePos():DistToSqr( tr.HitPos ) < 5000 and ( revEnemies or LambdaTeams and LambdaTeams:AreTeammates( ply, ent ) != false ) then
-	                ent:SetNWEntity( "Reviver", ply )
-	                ply.RevivingThatEntity = ent
-	            end
+					if LambdaIsValid( ent ) and ent.IsLambdaPlayer and ent:IsDowned() and ply:EyePos():DistToSqr( tr.HitPos ) < 5000 and ( revEnemies or LambdaTeams and LambdaTeams:AreTeammates( ply, ent ) != false ) then
+						ent:SetNWEntity( "Reviver", ply )
+						ply.RevivingThatEntity = ent
+					end
+				end
 			end
 
 			for _, ply in ipairs( GetLambdaPlayers() ) do
@@ -209,11 +209,8 @@ local function InitializeModule()
 
 		hook.Add( "Think", hookName .. "OnServerThink", OnServerThink )
 
-		local function OnSetState( self, state )
-			if self:IsDowned() and ( state == "HealUp" or state == "ArmorUp" ) then return end
-			self:l_ReviveSystem_OldSetState( state )
-		end
-
+		-- HACK: Since revive system uses eye traces to check reviver is looking at its target,
+		-- Override the return trace table with our own
 		local eyeTrTbl = { Entity = NULL }
 		local function OnGetEyeTrace( self )
 			if self:GetState() == "ReviveFriend" and LambdaIsValid( self.l_ReviveTarget ) and self:IsInRange( self.l_ReviveTarget, 40 ) then 
@@ -223,6 +220,7 @@ local function InitializeModule()
 			return self:l_ReviveSystem_OldGetEyeTrace()
 		end
 
+		-- HACK: Don't play taunts if we are currenly downed
 		local function OnPlayGestureAndWait( self, id, speed )
 			if self:IsDowned() then return end
 			self:l_ReviveSystem_OldPlayGestureAndWait( id, speed )
@@ -231,7 +229,7 @@ local function InitializeModule()
 		local reviveTbl = { run = true, tol = 40 }
 		local function LambdaReviveFriend( self )
 			local revTarget = self.l_ReviveTarget
-			if !LambdaIsValid( revTarget ) or !revTarget:IsDowned() or revTarget.Takedowning or LambdaIsValid( revTarget:GetNWEntity( "Reviver" ) ) and revTarget:GetNWEntity( "Reviver" ) != self then
+			if !LambdaIsValid( revTarget ) or revTarget.Takedowning or !revTarget:IsDowned() or LambdaIsValid( revTarget:GetNWEntity( "Reviver" ) ) and revTarget:GetNWEntity( "Reviver" ) != self then
 				self:SetState( "Idle" )
 				return
 			end
@@ -243,10 +241,12 @@ local function InitializeModule()
 				self:SetSequence( self:LookupSequence( "laststand_startrevive" ) )
 				self:ResetSequenceInfo()
 				self:SetCycle( 0 )
-				while ( self.l_ReviveTarget:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) < 1.0 ) do
-					if !LambdaIsValid( self.l_ReviveTarget ) or !self.l_ReviveTarget:IsDowned() or self.l_ReviveTarget.Takedowning or !self:IsInRange( self.l_ReviveTarget, 40 ) then break end
-					if self.l_ReviveTarget:GetNWEntity( "Reviver" ) != self then break end
-					if self:IsDowned() or self.Takedowning or self:GetState() != "ReviveFriend" then break end
+
+				while ( LambdaIsValid( self.l_ReviveTarget ) and self.l_ReviveTarget:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) < 1.0 ) do
+					if self.Takedowning or self:IsDowned() or self:GetState() != "ReviveFriend" and !self:InCombat() then break end
+					if self:InCombat() and self:GetEnemy().GetEnemy and self:GetEnemy():GetEnemy() == self and self:CanSee( self:GetEnemy() ) then break end
+					if self.l_ReviveTarget.Takedowning or !self.l_ReviveTarget:IsDowned() or !self:IsInRange( self.l_ReviveTarget, 40 ) or self.l_ReviveTarget:GetNWEntity( "Reviver" ) != self then break end
+					
 					self:LookTo( self.l_ReviveTarget:WorldSpaceCenter(), 1.0 )
 					coroutine.yield()
 				end
@@ -266,9 +266,6 @@ local function InitializeModule()
 		local function LambdaBlankReturnFalseFunction( self ) return false end
 
 		local function OnInitialize( self )
-			self.l_ReviveSystem_OldSetState = self.SetState
-			self.SetState = OnSetState
-
 			self.l_ReviveSystem_OldGetEyeTrace = self.GetEyeTrace
 			self.GetEyeTrace = OnGetEyeTrace
 
@@ -294,8 +291,10 @@ local function InitializeModule()
 		end
 
 		local GetMovingDirection = plyMeta.MovingDirection
-		local function OnThink( self, wepent )
-	        if self.l_PrevAttackDistance then
+		local function OnThink( self, wepent, dead )
+	        if dead then return end
+			
+			if self.l_PrevAttackDistance then
 	            self.l_CombatAttackRange = self.l_PrevAttackDistance
 	            self.l_PrevAttackDistance = nil
 	        end
@@ -348,16 +347,19 @@ local function InitializeModule()
 		                end
 
 		                self:SetCollisionBounds( downedCollMins, downedCollMaxs )
-	        			self.l_nextphysicsupdate = CurTime() + 0.5
+	        			self.l_nextphysicsupdate = ( CurTime() + physUpdateTime:GetFloat() )
 	        		end
 
 		        	if self.l_UpdateDownedAnimations then
 			        	local downAnim = "laststand_idle"
-			        	if self.l_IsSelfReviving then
+
+						if self.l_IsSelfReviving then
 			        		downAnim = "laststand_selfrevive"
 			        	else
-			        		if !self.loco:GetVelocity():IsZero() then downAnim = "laststand_crawl_" .. GetMovingDirection( self ) end
-							if self.l_HoldType != "normal" and self.l_HoldType != "passive" and self.l_HoldType != "fist" then downAnim = downAnim .. "_wep" end
+							if self:IsOnGround() and !self.loco:GetVelocity():IsZero() then downAnim = "laststand_crawl_" .. GetMovingDirection( self ) end
+
+							local hType = self.l_HoldType
+							if hType != "normal" and hType != "passive" and hType != "fist" then downAnim = downAnim .. "_wep" end
 			        	end
 
 						downAnim = self:LookupSequence( downAnim )
@@ -371,7 +373,7 @@ local function InitializeModule()
 	        elseif CurTime() > self.l_ReviveTargetsCheckTime then 
 	    		local ene = self:GetEnemy()
 
-	    		if ( self:GetState() != "Combat" and !LambdaIsValid( ene ) or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) or ene.GetEnemy and ene:GetEnemy() != self ) and !self:IsPanicking() and self:GetState() != "ReviveFriend" and enableReviving:GetBool() then
+	    		if ( !self:InCombat() or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) or ene.GetEnemy and ene:GetEnemy() != self ) and !self:IsPanicking() and self:GetState() != "ReviveFriend" and enableReviving:GetBool() then
 	        		local canRescueNeutrals = ( bystandersRevive:GetBool() and self:GetState() != "FindTarget" and random( 1, 100 ) > self:GetCombatChance() and random( 1, 2 ) == 1 )
 	        		local revTarget = self:GetClosestEntity( nil, 2000, function( ent )
 	        			if ( !ent.IsLambdaPlayer or ent:GetIsDead() ) and ( !ent:IsPlayer() or !ent:Alive() or ignorePlys:GetBool() ) or ent.Takedowning or !ent:IsDowned() or LambdaIsValid( ent:GetNWEntity( "Reviver" ) ) or !self:CanSee( ent ) then return false end
@@ -395,6 +397,7 @@ local function InitializeModule()
 	        end
 		end
 
+		-- If Friends or Team module is installed, go to one of my teammates so that they can revive us
 		local function OnBeginMove( self, movePos, onNavmesh )
 			if self:IsDowned() then
 				local teammates = self:FindInSphere( nil, 1500, function( ent )
@@ -408,10 +411,12 @@ local function InitializeModule()
 			end
 		end
 
+		-- Don't produce footsteps while downed
 		local function OnFootStep( self, pos, matType )
 			if self:IsDowned() then return true end
 		end
 
+		-- Can't jump while downed
 		local function OnJump( self )
 			if self:IsDowned() then return true end
 		end
@@ -421,6 +426,7 @@ local function InitializeModule()
 			if self:IsDowned() and !self:HasLethalWeapon() then return true end
 		end
 
+		-- Don't switch weapons if we are downed and either we are dissallowed to or if are restricted to specific weapon
 		local function OnCanSwitchWeapon( self, wepName, wepTbl )
 			if self:IsDowned() and wepName != "none" and wepName != "physgun" then 
 				if self.l_IsSelfReviving or !enableWeapons:GetBool() or useSpecifiedWeapon:GetBool() and forcedWeapon:GetString() != wepName then 
@@ -517,6 +523,11 @@ local function InitializeModule()
 		    table_Empty( self.l_PreDownedData )
 		end
 
+		-- Prevents Lambdas from spawning healthkits and armor to heal themselves
+		local function OnChangeState( self, oldState, newState )
+			if self:IsDowned() and ( newState == "HealUp" or newState == "ArmorUp" ) then return true end
+		end
+
 		hook.Add( "LambdaOnInitialize", hookName .. "OnInitialize", OnInitialize )
 		hook.Add( "LambdaOnThink", hookName .. "OnThink", OnThink )
 		hook.Add( "LambdaOnBeginMove", hookName .. "OnBeginMove", OnBeginMove )
@@ -526,7 +537,8 @@ local function InitializeModule()
 		hook.Add( "LambdaCanSwitchWeapon", hookName .. "CanSwitchWeapon", OnCanSwitchWeapon )
 		hook.Add( "LambdaOnInjured", hookName .. "OnInjured", OnInjured )
 		hook.Add( "LambdaOnKilled", hookName .. "OnKilled", OnKilled )
-
+		hook.Add( "LambdaOnChangeState", hookName .. "OnChangeState", OnChangeState )
+		
 	end
 end
 
