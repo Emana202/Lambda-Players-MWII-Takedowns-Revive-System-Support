@@ -435,78 +435,78 @@ local function InitializeModule()
 			end
 		end
 
-		local function OnInjured( self, dmginfo )
-			if !self:GetIsDead() and !self:IsDowned() and !self.Takedowning and ( !self.AlreadyWasDowned or !downedOnce:GetBool() ) and !dmginfo:IsExplosionDamage() and enableDowning:GetBool() and random( 1, 100 ) <= downChance:GetInt() and dmginfo:GetDamage() >= ( self:Health() + self:GetArmor() ) then
-				self:SetHealth( reviveHealth:GetInt() )
-				self:GodEnable()
-				self:SimpleTimer( 0.5, function() self:GodDisable() end, true )
+		local function OnPreKilled( self, dmginfo, silent )
+			if silent or self:IsDowned() or self.Takedowning or self.AlreadyWasDowned and downedOnce:GetBool() or dmginfo:IsExplosionDamage() or !enableDowning:GetBool() or random( 1, 100 ) > downChance:GetInt() then return end
 
-				self.l_PreDownedData[ "RunSpeed" ] = self:GetRunSpeed()
-				self.l_PreDownedData[ "WalkSpeed" ] = self:GetWalkSpeed()
-				self.l_PreDownedData[ "CrouchSpeed" ] = self:GetCrouchSpeed()
+			self:SetHealth( reviveHealth:GetInt() )
+			self:GodEnable()
+			self:SimpleTimer( 0.5, function() self:GodDisable() end, true )
 
-				self:CancelMovement()
-		        self:SetRunSpeed( 25 )
-		        self:SetCrouchSpeed( 25 )
-		        self:SetWalkSpeed( 25 )
+			self.l_PreDownedData[ "RunSpeed" ] = self:GetRunSpeed()
+			self.l_PreDownedData[ "WalkSpeed" ] = self:GetWalkSpeed()
+			self.l_PreDownedData[ "CrouchSpeed" ] = self:GetCrouchSpeed()
 
-				local wepDelay = Rand( 0.33, 0.8 )
-				local curCooldown = self.l_WeaponUseCooldown
-				self.l_WeaponUseCooldown = ( CurTime() <= curCooldown and curCooldown + wepDelay or CurTime() + wepDelay )
+			self:CancelMovement()
+			self:SetRunSpeed( 25 )
+			self:SetCrouchSpeed( 25 )
+			self:SetWalkSpeed( 25 )
 
-				self:RemoveGesture( self.l_CurrentPlayedGesture )
-				self.l_UpdateAnimations = false
+			local wepDelay = Rand( 0.33, 0.8 )
+			local curCooldown = self.l_WeaponUseCooldown
+			self.l_WeaponUseCooldown = ( CurTime() <= curCooldown and curCooldown + wepDelay or CurTime() + wepDelay )
+
+			self:RemoveGesture( self.l_CurrentPlayedGesture )
+			self.l_UpdateAnimations = false
+			
+			local fallTime = self:SetSequence( self:LookupSequence( "laststand_down" ) )
+			self:ResetSequenceInfo()
+			self:SetCycle( 0 )
+			
+			self.l_moveWaitTime = CurTime() + fallTime
+
+			self.l_UpdateDownedAnimations = false
+			self:SimpleTimer( fallTime, function() self.l_UpdateDownedAnimations = true end )
+
+			local attacker = dmginfo:GetAttacker()
+			local useWeapons = enableWeapons:GetBool()
+
+			if self:GetIsReloading() and useWeapons and useSpecifiedWeapon:GetBool() then
+				self:RemoveNamedTimer( "Reload" )
+				self.l_Clip = self.l_MaxClip
+				self:SetIsReloading( false )
+			end
+
+			self:SimpleTimer( fallTime / random( 1, 4 ), function() 
+				if self:IsPanicking() then return end
+
+				if !useWeapons then self:RetreatFrom( attacker, 30 ) end
+				self:PlaySoundFile( self:GetVoiceLine( "panic" ) ) 
+			end )
+
+			if ignoreDowned:GetBool() then
+				if LambdaIsValid( attacker ) and attacker.IsLambdaPlayer and attacker:InCombat() and attacker:GetEnemy() == self then
+					attacker:OnOtherKilled( self, dmginfo )
+				end
 				
-				local fallTime = self:SetSequence( self:LookupSequence( "laststand_down" ) )
-				self:ResetSequenceInfo()
-				self:SetCycle( 0 )
-		        
-		        self.l_moveWaitTime = CurTime() + fallTime
-
-		        self.l_UpdateDownedAnimations = false
-		        self:SimpleTimer( fallTime, function() self.l_UpdateDownedAnimations = true end )
-
-				local attacker = dmginfo:GetAttacker()
-				local useWeapons = enableWeapons:GetBool()
-
-				if self:GetIsReloading() and useWeapons and useSpecifiedWeapon:GetBool() then
-			    	self:RemoveNamedTimer( "Reload" )
-			        self.l_Clip = self.l_MaxClip
-			        self:SetIsReloading( false )
-			    end
-
-				self:SimpleTimer( fallTime / random( 1, 4 ), function() 
-					if self:IsPanicking() then return end
-
-					if !useWeapons then self:RetreatFrom( attacker, 30 ) end
-					self:PlaySoundFile( self:GetVoiceLine( "panic" ) ) 
-				end )
-
-				if ignoreDowned:GetBool() then
-					if LambdaIsValid( attacker ) and attacker.IsLambdaPlayer and attacker:InCombat() and attacker:GetEnemy() == self then
-						attacker:OnOtherKilled( self, dmginfo )
-					end
-					
-					for _, v in ipairs( GetLambdaPlayers() ) do
-						if v != self and v != attacker and v:InCombat() and v:GetEnemy() == self then
-				        	v:SetState( "Idle" )
-				        	v:SetEnemy( NULL )
-				        	v:CancelMovement()
-				        end
+				for _, v in ipairs( GetLambdaPlayers() ) do
+					if v != self and v != attacker and v:InCombat() and v:GetEnemy() == self then
+						v:SetState( "Idle" )
+						v:SetEnemy( NULL )
+						v:CancelMovement()
 					end
 				end
-
-				self.Downed = true
-				self.AlreadyWasDowned = true
-				self.l_Downer = dmginfo:GetAttacker()
-				self.NextHPTimePain = CurTime() + 1.0
-				self.DownedTime = CurTime() + reviveTime:GetFloat()
-				
-				self:SetNWBool( "Downed", true )
-				self:SetNW2Float( "lambda_mwii_reviveprogress", 0 )
-
-				return true
 			end
+
+			self.Downed = true
+			self.AlreadyWasDowned = true
+			self.l_Downer = dmginfo:GetAttacker()
+			self.NextHPTimePain = CurTime() + 1.0
+			self.DownedTime = CurTime() + reviveTime:GetFloat()
+			
+			self:SetNWBool( "Downed", true )
+			self:SetNW2Float( "lambda_mwii_reviveprogress", 0 )
+
+			return true
 		end
 
 		local function OnKilled( self, dmginfo )
@@ -535,10 +535,10 @@ local function InitializeModule()
 		hook.Add( "LambdaOnJump", hookName .. "OnJump", OnJump )
 		hook.Add( "LambdaCanTarget", hookName .. "OnCanTarget", OnCanTarget )
 		hook.Add( "LambdaCanSwitchWeapon", hookName .. "CanSwitchWeapon", OnCanSwitchWeapon )
-		hook.Add( "LambdaOnInjured", hookName .. "OnInjured", OnInjured )
+		hook.Add( "LambdaOnPreKilled", hookName .. "OnPreKilled", OnPreKilled )
 		hook.Add( "LambdaOnKilled", hookName .. "OnKilled", OnKilled )
 		hook.Add( "LambdaOnChangeState", hookName .. "OnChangeState", OnChangeState )
-		
+
 	end
 end
 
