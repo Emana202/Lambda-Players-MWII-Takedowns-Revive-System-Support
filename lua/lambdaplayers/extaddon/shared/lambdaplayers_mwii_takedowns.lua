@@ -62,7 +62,11 @@ local function InitializeModule()
 			local tkBD = tkNPC.bd
 			if IsValid( tkBD ) then
 				self.l_BecomeRagdollEntity = tkBD
-				tkBD:SetPlayerColor( self:GetPlyColor() )
+
+				net.Start( "lambda_mwii_setplayercolor" )
+					net.WriteEntity( tkBD )
+					net.WriteVector( self:GetPlyColor() )
+				net.Broadcast()
 			end
 
 			if isVictim then
