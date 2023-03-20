@@ -135,11 +135,11 @@ local function InitializeModule()
 			end
 
 			for _, ply in ipairs( GetLambdaPlayers() ) do
-		        if !LambdaIsValid( ply ) or !ply:IsDowned() then continue end
+		        if ply:GetIsDead() or !ply:IsDowned() then continue end
 		        local reviver = ply:GetNWEntity( "Reviver" )
 
 	        	if LambdaIsValid( reviver ) then
-	        		if !ply.Takedowning and ( !reviver:IsPlayer() or reviver:KeyDown( IN_USE ) and reviver:GetEyeTrace().Entity == ply ) then
+					if !ply.Takedowning and ( !reviver:IsPlayer() or reviver:KeyDown( IN_USE ) and reviver:GetEyeTrace().Entity == ply ) then
 	                    if reviver:IsPlayer() then
 	                        reviver:SetActiveWeapon(nil)
 	                        
@@ -156,7 +156,9 @@ local function InitializeModule()
 	                        if !reviver.Takedowning then reviver:SetSVAnimation( "" ) end
 	                        reviver.RevivingTarget = false
 	                    end
-	                   	ply:SetNWEntity( "Reviver", NULL )
+	                   	
+						reviver = NULL
+						ply:SetNWEntity( "Reviver", reviver )
 					end
 				end
 
@@ -191,9 +193,8 @@ local function InitializeModule()
 					local curCooldown = ply.l_WeaponUseCooldown
 					ply.l_WeaponUseCooldown = ( CurTime() <= curCooldown and curCooldown + wepDelay or CurTime() + wepDelay )
 		            
-		            reviver = ply:GetNWEntity( "Reviver" )
 		            if LambdaIsValid( reviver ) then
-		            	if ply.AddFriend and random( 1, 2 ) == 1 then ply:AddFriend( reviver ) end
+		            	if ply.AddFriend and random( 1, 3 ) != 1 then ply:AddFriend( reviver ) end
 
 		            	if reviver:IsPlayer() then
 		                    reviver:SetSVAnimation( "" )
@@ -203,7 +204,9 @@ local function InitializeModule()
 						ply:LookTo( reviver, 1.0 )
 						ply:SimpleTimer( ( standTime / random( 1, 4 ) ), function() ply:PlaySoundFile( ply:GetVoiceLine( "assist" ) ) end )
 		            end
-	        	end
+
+					ply:SetNWEntity( "Reviver", NULL )
+				end
 			end
 		end
 
@@ -241,11 +244,13 @@ local function InitializeModule()
 				self:SetSequence( self:LookupSequence( "laststand_startrevive" ) )
 				self:ResetSequenceInfo()
 				self:SetCycle( 0 )
-
+				
 				while ( LambdaIsValid( self.l_ReviveTarget ) and self.l_ReviveTarget:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) < 1.0 ) do
 					if self.Takedowning or self:IsDowned() or self:GetState() != "ReviveFriend" and !self:InCombat() then break end
 					if self:InCombat() and self:GetEnemy().GetEnemy and self:GetEnemy():GetEnemy() == self and self:CanSee( self:GetEnemy() ) then break end
-					if self.l_ReviveTarget.Takedowning or !self.l_ReviveTarget:IsDowned() or !self:IsInRange( self.l_ReviveTarget, 40 ) or self.l_ReviveTarget:GetNWEntity( "Reviver" ) != self then break end
+					
+					revTarget = self.l_ReviveTarget
+					if revTarget.Takedowning or !revTarget:IsDowned() or !self:IsInRange( revTarget, 40 ) or revTarget:GetNWEntity( "Reviver" ) != self then break end
 					
 					self:LookTo( self.l_ReviveTarget:WorldSpaceCenter(), 1.0 )
 					coroutine.yield()
@@ -364,16 +369,16 @@ local function InitializeModule()
 
 						downAnim = self:LookupSequence( downAnim )
 						if self:GetSequence() != downAnim or self:IsSequenceFinished() then
-							self:SetSequence( downAnim )
 							self:ResetSequenceInfo()
 							self:SetCycle( 0 )
 						end
+						self:SetSequence( downAnim )
 					end
 				end
 	        elseif CurTime() > self.l_ReviveTargetsCheckTime then 
 	    		local ene = self:GetEnemy()
 
-	    		if ( !self:InCombat() or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) or ene.GetEnemy and ene:GetEnemy() != self ) and !self:IsPanicking() and self:GetState() != "ReviveFriend" and enableReviving:GetBool() then
+	    		if ( !self:InCombat() or random( 1, 3 ) == 1 and !self:CanSee( ene ) or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) or ene.GetEnemy and ene:GetEnemy() != self ) and !self:IsPanicking() and self:GetState() != "ReviveFriend" and enableReviving:GetBool() then
 	        		local canRescueNeutrals = ( bystandersRevive:GetBool() and self:GetState() != "FindTarget" and random( 1, 100 ) > self:GetCombatChance() and random( 1, 2 ) == 1 )
 	        		local revTarget = self:GetClosestEntity( nil, 2000, function( ent )
 	        			if ( !ent.IsLambdaPlayer or ent:GetIsDead() ) and ( !ent:IsPlayer() or !ent:Alive() or ignorePlys:GetBool() ) or ent.Takedowning or !ent:IsDowned() or LambdaIsValid( ent:GetNWEntity( "Reviver" ) ) or !self:CanSee( ent ) then return false end
@@ -455,7 +460,7 @@ local function InitializeModule()
 			local curCooldown = self.l_WeaponUseCooldown
 			self.l_WeaponUseCooldown = ( CurTime() <= curCooldown and curCooldown + wepDelay or CurTime() + wepDelay )
 
-			self:RemoveGesture( self.l_CurrentPlayedGesture )
+			self:RemoveAllGestures()
 			self.l_UpdateAnimations = false
 			
 			local fallTime = self:SetSequence( self:LookupSequence( "laststand_down" ) )
