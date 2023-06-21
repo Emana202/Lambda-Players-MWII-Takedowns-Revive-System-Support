@@ -289,6 +289,8 @@ local function InitializeModule()
 			self.AlreadyWasDowned = false
 			self.l_UpdateDownedAnimations = true
 			self.DownedTime = CurTime()
+			self.DownedEnt = self
+			self.Reviving = true
 			self.NextHPTimePain = CurTime()
 			self.l_ReviveTargetsCheckTime = CurTime() + 1.0
 			self.l_PreDownedData = {}

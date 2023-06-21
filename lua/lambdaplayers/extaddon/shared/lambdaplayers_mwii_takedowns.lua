@@ -44,24 +44,49 @@ local function InitializeModule()
 		local takedownAllNPCs = GetConVar( "mwii_takedown_npcs_canusetakedowns_allnpcs" )
 
 		local function OnLambdaTakedown( self, isVictim )
-			self.l_isfrozen = true
-			self:ClientSideNoDraw( self, true )
-
-			self:ClientSideNoDraw( self.WeaponEnt, true )
-			self.WeaponEnt:SetNoDraw( true )
-			self.WeaponEnt:DrawShadow( false )
-
-			local tkNPC = NULL
+			local tkNPC = nil
 			for _, v in ipairs( ents_FindByClass( "mwii_takedown_npc" ) ) do
 				if IsValid( v ) and v.NPC == self then tkNPC = v; break end
 			end
-			
 			if !tkNPC then return end
+
 			self.TakedownNPC = tkNPC
-			
+			self.l_isfrozen = true
+			self:ClientSideNoDraw( self, true )
+
+			local weapon = self.WeaponEnt
+			self:ClientSideNoDraw( weapon, true )
+			weapon:SetNoDraw( true )
+			weapon:DrawShadow( false )
+
+			local hiddenChildren = {}
+			for _, child in ipairs( self:GetChildren() ) do
+				if !IsValid( child ) or child == weapon or child:GetNoDraw() then continue end
+
+				local mdl = child:GetModel()
+				if !mdl or mdl == "" then continue end
+
+				self:ClientSideNoDraw( child, true )
+				child:SetRenderMode( RENDERMODE_NONE )
+				child:DrawShadow( false )
+				hiddenChildren[ #hiddenChildren + 1 ] = child
+			end
+
 			local tkBD = tkNPC.bd
 			if IsValid( tkBD ) then
 				self.l_BecomeRagdollEntity = tkBD
+
+				for _, child in ipairs( hiddenChildren ) do
+				    local fakeChild = ents_Create( "base_anim" )
+				    fakeChild:SetModel( child:GetModel() )
+				    fakeChild:SetPos( tkBD:GetPos() )
+				    fakeChild:SetAngles( tkBD:GetAngles() )
+				    fakeChild:SetOwner( tkBD )
+				    fakeChild:SetParent( tkBD )
+				    fakeChild:Spawn()
+				    fakeChild:AddEffects( EF_BONEMERGE )
+				    tkBD:DeleteOnRemove( fakeChild )
+				end
 
 				net.Start( "lambda_mwii_setplayercolor" )
 					net.WriteEntity( tkBD )
@@ -145,6 +170,13 @@ local function InitializeModule()
 						self:ClientSideNoDraw( wepent, wepNoDraw )
 						wepent:SetNoDraw( wepNoDraw )
 						wepent:DrawShadow( !wepNoDraw )
+
+						for _, child in ipairs( hiddenChildren ) do
+							if !IsValid( child ) then continue end
+							self:ClientSideNoDraw( child, false )
+							child:SetRenderMode( RENDERMODE_NORMAL )
+							child:DrawShadow( true )
+						end
 					end
 
 					return true
@@ -264,7 +296,7 @@ local function InitializeModule()
 
 		-- Don't change weapons while in takedown
 		local function OnCanSwitchWeapon( self, name, data )
-			if self.IsTakedowning then return true end
+			if self.Takedowning then return true end
 		end
 
 		local function OnKilled( self, dmginfo )
