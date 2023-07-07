@@ -1,5 +1,5 @@
 if !file.Exists( "autorun/sh_mwii_survivor.lua", "LUA" ) then return end
-local hookName = "Lambda_MWII_ReviveSystem_"
+local hookName = "LambdaMWII_ReviveSystem_"
 
 local enableDowning 		= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enabledowning", 1, true, false, false, "If Lambda Players can be downed if they reach zero health", 0, 1, { type = "Bool", name = "Enable Downing", category = "MWII - Revive System" } )
 local downChance 			= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_downchance", 100, true, false, false, "The chance a Lambda Player will get downed instead of dying", 0, 100, { type = "Slider", decimals = 0, name = "Chance To Be Downed", category = "MWII - Revive System" } )
@@ -14,12 +14,13 @@ local ignoreDowned 			= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_ign
 local bystandersRevive 		= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_bystandersrevive", 1, true, false, false, "If Lambda Players that are not friends or teammates with their revive target but are not aggresive in their personality can still revive them", 0, 1, { type = "Bool", name = "Friendly Bystanders Can Revive", category = "MWII - Revive System" } )
 
 local function InitializeModule()
+	LambdaMWII_ReviveSystemInitialized = true
+
 	local IsValid = IsValid
 	local ipairs = ipairs
 	local FrameTime = FrameTime
 	local GetConVar = GetConVar
-
-	local reviveEnemies;
+	local reviveEnemies
 
 	if ( CLIENT ) then
 
@@ -84,7 +85,7 @@ local function InitializeModule()
 	                surface.SetDrawColor( color_grey2 )
 	                surface.DrawRect( w - 100, h + 110, 200, 24 )
 
-	                local reviveProgress = ent:GetNW2Float( "lambda_mwii_reviveprogress", 0 )
+	                local reviveProgress = ent:GetNW2Float( "lambdamwii_reviveprogress", 0 )
 	                surface.SetDrawColor(color_grey1)
 	                surface.DrawRect( w - 98, h + 112, 196 * ( min( reviveProgress, 1 ) / 1 ), 20 )
 	            else
@@ -105,8 +106,10 @@ local function InitializeModule()
 		local table_Empty = table.Empty
 		local player_GetAll = player.GetAll
 		local GetLambdaPlayers = GetLambdaPlayers
-		local plyMeta = FindMetaTable( "Player" )
 		local ignorePlys = GetConVar( "ai_ignoreplayers" )
+
+		local plyMeta = FindMetaTable( "Player" )
+		local GetMovingDirection = plyMeta.MovingDirection
 
 		local reviveHealth = GetConVar( "mwii_revive_health" )
 		local reviveTime = GetConVar( "mwii_revive_time" )
@@ -129,6 +132,7 @@ local function InitializeModule()
 
 					if LambdaIsValid( ent ) and ent.IsLambdaPlayer and ent:IsDowned() and ply:EyePos():DistToSqr( tr.HitPos ) < 5000 and ( revEnemies or LambdaTeams and LambdaTeams:AreTeammates( ply, ent ) != false ) then
 						ent:SetNWEntity( "Reviver", ply )
+						ent.l_DownedReviver = ply
 						ply.RevivingThatEntity = ent
 					end
 				end
@@ -136,7 +140,7 @@ local function InitializeModule()
 
 			for _, ply in ipairs( GetLambdaPlayers() ) do
 		        if ply:GetIsDead() or !ply:IsDowned() then continue end
-		        local reviver = ply:GetNWEntity( "Reviver" )
+		        local reviver = ply.l_DownedReviver
 
 	        	if LambdaIsValid( reviver ) then
 					if !ply.Takedowning and ( !reviver:IsPlayer() or reviver:KeyDown( IN_USE ) and reviver:GetEyeTrace().Entity == ply ) then
@@ -150,7 +154,7 @@ local function InitializeModule()
 	                    end
 
 					    ply.l_moveWaitTime = CurTime() + 0.1
-	                    ply:SetNW2Float( "lambda_mwii_reviveprogress", ply:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) + ( FrameTime() / 3 ) )
+	                    ply:SetNW2Float( "lambdamwii_reviveprogress", ply:GetNW2Float( "lambdamwii_reviveprogress", 0 ) + ( FrameTime() / 3 ) )
 	                else
 	                    if reviver:IsPlayer() and reviver.RevivingTarget then
 	                        if !reviver.Takedowning then reviver:SetSVAnimation( "" ) end
@@ -158,17 +162,18 @@ local function InitializeModule()
 	                    end
 	                   	
 						reviver = NULL
+						ply.l_DownedReviver = reviver
 						ply:SetNWEntity( "Reviver", reviver )
 					end
 				end
 
-        		if ply.l_IsSelfReviving then
-	                ply:SetNW2Float( "lambda_mwii_reviveprogress", ply:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) + ( FrameTime() / 5.5 ) )
+	    		if ply.l_IsSelfReviving then
+	                ply:SetNW2Float( "lambdamwii_reviveprogress", ply:GetNW2Float( "lambdamwii_reviveprogress", 0 ) + ( FrameTime() / 5.5 ) )
 	        	elseif !LambdaIsValid( reviver ) then
-	                ply:SetNW2Float( "lambda_mwii_reviveprogress", 0 )
+	                ply:SetNW2Float( "lambdamwii_reviveprogress", 0 )
 	        	end
 
-	        	if ply:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) >= 1.0 then
+	        	if ply:GetNW2Float( "lambdamwii_reviveprogress", 0 ) >= 1.0 then
 					ply:SetHealth( 25 )
 
 			        ply:SetRunSpeed( ply.l_PreDownedData[ "RunSpeed" ] )
@@ -205,6 +210,7 @@ local function InitializeModule()
 						ply:SimpleTimer( ( standTime / random( 1, 4 ) ), function() ply:PlaySoundFile( ply:GetVoiceLine( "assist" ) ) end )
 		            end
 
+		            ply.l_DownedReviver = NULL
 					ply:SetNWEntity( "Reviver", NULL )
 				end
 			end
@@ -232,25 +238,32 @@ local function InitializeModule()
 		local reviveTbl = { run = true, tol = 40 }
 		local function LambdaReviveFriend( self )
 			local revTarget = self.l_ReviveTarget
-			if !LambdaIsValid( revTarget ) or revTarget.Takedowning or !revTarget:IsDowned() or LambdaIsValid( revTarget:GetNWEntity( "Reviver" ) ) and revTarget:GetNWEntity( "Reviver" ) != self then
+			if !LambdaIsValid( revTarget ) or revTarget.Takedowning or !revTarget:IsDowned() then
+				self:SetState( "Idle" )
+				return
+			end
+
+			local reviver = revTarget.l_DownedReviver
+			if LambdaIsValid( reviver ) and reviver != self then
 				self:SetState( "Idle" )
 				return
 			end
 
 			if self:IsInRange( revTarget, 40 ) and self:CanSee( revTarget ) then
 				self.l_UpdateAnimations = false
+				revTarget.l_DownedReviver = self
 				revTarget:SetNWEntity( "Reviver", self )
 
 				self:SetSequence( self:LookupSequence( "laststand_startrevive" ) )
 				self:ResetSequenceInfo()
 				self:SetCycle( 0 )
 				
-				while ( LambdaIsValid( self.l_ReviveTarget ) and self.l_ReviveTarget:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) < 1.0 ) do
+				while ( LambdaIsValid( self.l_ReviveTarget ) and self.l_ReviveTarget:GetNW2Float( "lambdamwii_reviveprogress", 0 ) < 1.0 ) do
 					if self.Takedowning or self:IsDowned() or self:GetState() != "ReviveFriend" and !self:InCombat() then break end
 					if self:InCombat() and self:GetEnemy().GetEnemy and self:GetEnemy():GetEnemy() == self and self:CanSee( self:GetEnemy() ) then break end
 					
 					revTarget = self.l_ReviveTarget
-					if revTarget.Takedowning or !revTarget:IsDowned() or !self:IsInRange( revTarget, 40 ) or revTarget:GetNWEntity( "Reviver" ) != self then break end
+					if revTarget.Takedowning or !revTarget:IsDowned() or !self:IsInRange( revTarget, 40 ) or revTarget.l_DownedReviver != self then break end
 					
 					self:LookTo( self.l_ReviveTarget:WorldSpaceCenter(), 1.0 )
 					coroutine.yield()
@@ -258,7 +271,10 @@ local function InitializeModule()
 
 				self.l_UpdateAnimations = true
 				if self:GetState() == "ReviveFriend" then self:SetState( "Idle" ) end
-				if IsValid( self.l_ReviveTarget ) then self.l_ReviveTarget:SetNWEntity( "Reviver", NULL ) end
+				if IsValid( self.l_ReviveTarget ) then 
+					self.l_ReviveTarget.l_DownedReviver = NULL
+					self.l_ReviveTarget:SetNWEntity( "Reviver", NULL ) 
+				end
 
 				return
 			end
@@ -290,14 +306,15 @@ local function InitializeModule()
 			self.l_UpdateDownedAnimations = true
 			self.DownedTime = CurTime()
 			self.DownedEnt = self
+			self.l_ReviveTarget = NULL
+			self.l_DownedReviver = NULL
 			self.Reviving = true
 			self.NextHPTimePain = CurTime()
 			self.l_ReviveTargetsCheckTime = CurTime() + 1.0
 			self.l_PreDownedData = {}
-			self:SetNW2Float( "lambda_mwii_reviveprogress", 0 )
+			self:SetNW2Float( "lambdamwii_reviveprogress", 0 )
 		end
 
-		local GetMovingDirection = plyMeta.MovingDirection
 		local function OnThink( self, wepent, dead )
 	        if dead then return end
 			
@@ -307,7 +324,7 @@ local function InitializeModule()
 	        end
 
 	        if self:IsDowned() then
-	        	local reviver = self:GetNWEntity( "Reviver" )
+	        	local reviver = self.l_DownedReviver
 	        	if !LambdaIsValid( reviver ) then 
 	        		local ene = self:GetEnemy()
 					local canSelfRevive = ( enableSelfReviving:GetBool() and self.l_UpdateDownedAnimations and !self.Takedowning and ( !self:InCombat() or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) or !self:IsInRange( ene, 1000 ) or !self:CanSee( ene ) ) and ( !self:IsPanicking() or !LambdaIsValid( self.l_RetreatTarget ) or !self:IsInRange( self.l_RetreatTarget, 1000 ) and !self:CanSee( self.l_RetreatTarget ) ) )
@@ -334,7 +351,7 @@ local function InitializeModule()
 	                end
 	        	end
 
-	            if self:GetNW2Float( "lambda_mwii_reviveprogress", 0 ) < 1 then
+	            if self:GetNW2Float( "lambdamwii_reviveprogress", 0 ) < 1 then
 	            	local forceWep = forcedWeapon:GetString()
 	            	if self.l_IsSelfReviving or !enableWeapons:GetBool() or useSpecifiedWeapon:GetBool() and self.l_Weapon != forceWep and !self:CanEquipWeapon( forceWep ) then
 	            		if self.l_Weapon != "none" and self.l_Weapon != "physgun" then
@@ -383,7 +400,7 @@ local function InitializeModule()
 	    		if ( !self:InCombat() or random( 1, 3 ) == 1 and !self:CanSee( ene ) or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) or ene.GetEnemy and ene:GetEnemy() != self ) and !self:IsPanicking() and self:GetState() != "ReviveFriend" and enableReviving:GetBool() then
 	        		local canRescueNeutrals = ( bystandersRevive:GetBool() and self:GetState() != "FindTarget" and random( 1, 100 ) > self:GetCombatChance() and random( 1, 2 ) == 1 )
 	        		local revTarget = self:GetClosestEntity( nil, 2000, function( ent )
-	        			if ( !ent.IsLambdaPlayer or ent:GetIsDead() ) and ( !ent:IsPlayer() or !ent:Alive() or ignorePlys:GetBool() ) or ent.Takedowning or !ent:IsDowned() or LambdaIsValid( ent:GetNWEntity( "Reviver" ) ) or !self:CanSee( ent ) then return false end
+	        			if ( !ent.IsLambdaPlayer or ent:GetIsDead() ) and ( !ent:IsPlayer() or !ent:Alive() or ignorePlys:GetBool() ) or ent.Takedowning or !ent:IsDowned() or LambdaIsValid( ent.l_DownedReviver or ent:GetNWEntity( "Reviver" ) ) or !self:CanSee( ent ) then return false end
 	        			if canRescueNeutrals and ent.l_Downer != self and ( !LambdaTeams or LambdaTeams:AreTeammates( self, ent ) == nil ) and ( !self.IsFriendsWith or !self:IsFriendsWith( ent ) ) then return true end
 	    				if LambdaTeams and LambdaTeams:AreTeammates( self, ent ) then return true end
 	        			if self.IsFriendsWith and self:IsFriendsWith( ent ) then return true end
@@ -430,10 +447,10 @@ local function InitializeModule()
 
 		local function OnCanTarget( self, target )
 			if target:IsDowned() and ignoreDowned:GetBool() then return true end
-			if self:IsDowned() and !self:HasLethalWeapon() then return true end
+			if self:IsDowned() and ( target.IsLambdaPlayer and target.l_ReviveTarget == self or !self:HasLethalWeapon() ) then return true end
 		end
 
-		-- Don't switch weapons if we are downed and either we are dissallowed to or if are restricted to specific weapon
+		-- Don't  switchweapons if we are downed and either we are dissallowed to or if are restricted to specific weapon
 		local function OnCanSwitchWeapon( self, wepName, wepTbl )
 			if self:IsDowned() and wepName != "none" and wepName != "physgun" then 
 				if self.l_IsSelfReviving or !enableWeapons:GetBool() or useSpecifiedWeapon:GetBool() and forcedWeapon:GetString() != wepName then 
@@ -511,7 +528,7 @@ local function InitializeModule()
 			self.DownedTime = CurTime() + reviveTime:GetFloat()
 			
 			self:SetNWBool( "Downed", true )
-			self:SetNW2Float( "lambda_mwii_reviveprogress", 0 )
+			self:SetNW2Float( "lambdamwii_reviveprogress", 0 )
 
 			return true
 		end
@@ -550,3 +567,4 @@ local function InitializeModule()
 end
 
 hook.Add( "InitPostEntity", hookName .. "InitializeModule", InitializeModule )
+if LambdaMWII_ReviveSystemInitialized then InitializeModule() end

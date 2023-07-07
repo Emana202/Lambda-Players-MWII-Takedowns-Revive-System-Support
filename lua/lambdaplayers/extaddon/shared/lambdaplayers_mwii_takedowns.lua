@@ -1,17 +1,18 @@
 if !file.Exists( "autorun/sh_mwii_takedowns.lua", "LUA" ) then return end
-
-local hookName = "Lambda_MWII_Takedowns_"
+local hookName = "LambdaMWII_Takedowns_"
 
 local enableTakedowns = CreateLambdaConvar( "lambdaplayers_mwii_takedowns_enabled", 1, true, false, false, "If Lambda Players are allowed to execute takedowns when right behind their targets. Make sure that Lambda Players are registered in the Takedown NPC and Can be Takedowned NPC list", 0, 1, { type = "Bool", name = "Enable Takedowns", category = "MWII - Takedowns" } )
 local downedBehavior = CreateLambdaConvar( "lambdaplayers_mwii_takedowns_downedbehavior", 0, true, false, false, "What takedown behavior should Lambda Players use on downed targets: 0 - Treat them as everyone else; 1 - Only takedown downed targets; 2 - Never takedown downed targets", 0, 2, { type = "Slider", decimals = 0, name = "Takedown Behavior On Downed Targets", category = "MWII - Takedowns" } )
 
 local function InitializeModule()
+	LambdaMWII_TakedownsInitialized = true
+
 	local IsValid = IsValid
 	local net = net
 
 	if ( CLIENT ) then
 
-		net.Receive( "lambda_mwii_setplayercolor", function()
+		net.Receive( "lambdamwii_setplayercolor", function()
 			local target = net.ReadEntity()
 			if !IsValid( target ) then return end
 
@@ -23,20 +24,20 @@ local function InitializeModule()
 
 	if ( SERVER ) then
 
-		util.AddNetworkString( "lambda_mwii_setplayercolor" )
+		util.AddNetworkString( "lambdamwii_setplayercolor" )
 
 		local ipairs = ipairs
 		local IsSinglePlayer = game.SinglePlayer
 		local random = math.random
 		local Rand = math.Rand
+		local deg = math.deg
+		local acos = math.acos
 		local ents_FindByClass = ents.FindByClass
 		local ents_Create = ents.Create
 		local table_HasValue = table.HasValue
 		local TraceHull = util.TraceHull
 		local string_StartWith = string.StartWith
 		local trTbl = { filter = { NULL, NULL, NULL, NULL } }
-		local plyMeta = FindMetaTable( "Player" )
-		local entMeta = FindMetaTable( "Entity" )
 
 		local plyDownedWep = GetConVar( "mwii_revive_canshoot" )
 		local npcDownedWep = GetConVar( "mwii_revive_npc_canshoot" )
@@ -88,7 +89,7 @@ local function InitializeModule()
 				    tkBD:DeleteOnRemove( fakeChild )
 				end
 
-				net.Start( "lambda_mwii_setplayercolor" )
+				net.Start( "lambdamwii_setplayercolor" )
 					net.WriteEntity( tkBD )
 					net.WriteVector( self:GetPlyColor() )
 				net.Broadcast()
@@ -204,36 +205,44 @@ local function InitializeModule()
 			return tkNPC
 		end
 
-		local oldPlayerTakedown = plyMeta.Takedown
-		function plyMeta:Takedown()
-			local trEnt = self:GetEyeTrace().Entity
-			if IsValid( trEnt ) and trEnt.IsLambdaPlayer and ( !trEnt:Alive() or ( LambdaTeams and LambdaTeams:AreTeammates( self, trEnt ) or trEnt.IsFriendsWith and trEnt:IsFriendsWith( self ) ) ) then return end
+		if !LambdaMWII_OldPlayerTakedown then
+			local plyMeta = FindMetaTable( "Player" )
+			LambdaMWII_OldPlayerTakedown = plyMeta.Takedown
 
-			oldPlayerTakedown( self )
-			if !self.Takedowning then return end
+			function plyMeta:Takedown()
+				local trEnt = self:GetEyeTrace().Entity
+				if IsValid( trEnt ) and trEnt.IsLambdaPlayer and ( !trEnt:Alive() or ( LambdaTeams and LambdaTeams:AreTeammates( self, trEnt ) or trEnt.IsFriendsWith and trEnt:IsFriendsWith( self ) ) ) then return end
 
-			local target = self.TakedowningTarget
-			if !IsValid( target ) or !target.IsLambdaPlayer then return end
+				LambdaMWII_OldPlayerTakedown( self )
+				if !self.Takedowning then return end
 
-			target.TakedownFinisher = self
-			OnLambdaTakedown( target, true )
-		end
+				local target = self.TakedowningTarget
+				if !IsValid( target ) or !target.IsLambdaPlayer then return end
 
-		local oldNPCTakedown = entMeta.NPC_Takedown
-		function entMeta:NPC_Takedown( ent )
-			if IsValid( ent ) and ent.IsLambdaPlayer and ( !ent:Alive() or ( LambdaTeams and LambdaTeams:AreTeammates( self, ent ) or self.IsFriendsWith and self:IsFriendsWith( ent ) ) ) then return end
-
-			oldNPCTakedown( self, ent )
-			if !self.Takedowning then return end
-
-			if self.IsLambdaPlayer then
-				OnLambdaTakedown( self )
-			end
-
-			local target = self.TakedowningTarget
-			if IsValid( target ) and target.IsLambdaPlayer then
 				target.TakedownFinisher = self
 				OnLambdaTakedown( target, true )
+			end
+		end
+
+		if !LambdaMWII_OldNPCTakedown then
+			local entMeta = FindMetaTable( "Entity" )
+			LambdaMWII_OldNPCTakedown = entMeta.NPC_Takedown
+			
+			function entMeta:NPC_Takedown( ent )
+				if IsValid( ent ) and ent.IsLambdaPlayer and ( !ent:Alive() or ( LambdaTeams and LambdaTeams:AreTeammates( self, ent ) or self.IsFriendsWith and self:IsFriendsWith( ent ) ) ) then return end
+
+				LambdaMWII_OldNPCTakedown( self, ent )
+				if !self.Takedowning then return end
+
+				if self.IsLambdaPlayer then
+					OnLambdaTakedown( self )
+				end
+
+				local target = self.TakedowningTarget
+				if IsValid( target ) and target.IsLambdaPlayer then
+					target.TakedownFinisher = self
+					OnLambdaTakedown( target, true )
+				end
 			end
 		end
 
@@ -244,7 +253,13 @@ local function InitializeModule()
 			self.l_TakedownCheckTime = CurTime() + Rand( 0.1, 0.25 )
 		end
 
-		local LambdaIsAtBack = plyMeta.IsAtBack
+		local onlyFromBack = GetConVar( "mwii_takedown_only_from_back" )
+		local function IsAtTargetsBack( self, target )
+	        if !IsValid( target ) then return end
+	        if self:IsPlayer() and !onlyFromBack:GetBool() then return true end
+	        return ( deg( acos( target:GetForward():Angle():Forward():Dot( ( self:GetPos() - target:GetPos() ):GetNormalized() ) ) ) > 100 )
+	    end
+
 		local function OnThink( self, wepent, dead )
 			if dead then return end
 
@@ -263,7 +278,7 @@ local function InitializeModule()
 					local IsDowned = ene:IsDowned()
 					local downBehav = downedBehavior:GetInt()
 					if downBehav == 0 or downBehav == 1 and IsDowned or downBehav == 2 and !IsDowned then
-						local isBehind = LambdaIsAtBack( self, ene )
+						local isBehind = IsAtTargetsBack( self, ene )
 						if CurTime() > self.l_TakedownCheckTime and ( isBehind and self:IsInRange( ene, 70 ) or IsDowned and self:IsInRange( ene, 32 ) ) and self:CanSee( ene ) then
 							self:NPC_Takedown( ene )
 						elseif IsDowned or isBehind and ( ene:IsPlayer() and self:IsInRange( ene, 300 ) or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) ) then
@@ -271,7 +286,7 @@ local function InitializeModule()
 							self.l_CombatKeepDistance = 0
 
 							local target = ( ene.IsLambdaPlayer and ene:GetEnemy() or NULL )
-							if !LambdaIsValid( target ) or !self.IsFriendsWith or !self:IsFriendsWith( target ) or !LambdaTeams or !LambdaTeams:AreTeammates( self, target ) or !LambdaIsAtBack( ene, target ) and !target:IsDowned() then
+							if !LambdaIsValid( target ) or !self.IsFriendsWith or !self:IsFriendsWith( target ) or !LambdaTeams or !LambdaTeams:AreTeammates( self, target ) or !IsAtTargetsBack( ene, target ) and !target:IsDowned() then
 								if !IsDowned or ene.IsLambdaPlayer and ( !ene:HasLethalWeapon() or !ene:InCombat() or ene:GetEnemy() != self ) or ene:IsPlayer() and !plyDownedWep:GetBool() or ene:IsNPC() and !npcDownedWep:GetBool() then
 									self.l_PrevAttackDistance = self.l_CombatAttackRange
 									self.l_CombatAttackRange = 0
@@ -336,3 +351,4 @@ local function InitializeModule()
 end
 
 hook.Add( "InitPostEntity", hookName .. "InitializeModule", InitializeModule )
+if LambdaMWII_TakedownsInitialized then InitializeModule() end
