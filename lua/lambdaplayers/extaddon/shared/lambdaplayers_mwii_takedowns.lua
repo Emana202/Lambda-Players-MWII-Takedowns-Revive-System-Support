@@ -205,45 +205,54 @@ local function InitializeModule()
 			return tkNPC
 		end
 
-		if !LambdaMWII_OldPlayerTakedown then
-			local plyMeta = FindMetaTable( "Player" )
-			LambdaMWII_OldPlayerTakedown = plyMeta.Takedown
+		local plyMeta = FindMetaTable( "Player" )
+		LambdaMWII_OldPlayerTakedown = ( LambdaMWII_OldPlayerTakedown or plyMeta.Takedown )
 
-			function plyMeta:Takedown()
-				local trEnt = self:GetEyeTrace().Entity
-				if IsValid( trEnt ) and trEnt.IsLambdaPlayer and ( !trEnt:Alive() or ( LambdaTeams and LambdaTeams:AreTeammates( self, trEnt ) or trEnt.IsFriendsWith and trEnt:IsFriendsWith( self ) ) ) then return end
+		function plyMeta:Takedown()
+			local trEnt = self:GetEyeTrace().Entity
+			if IsValid( trEnt ) and trEnt.IsLambdaPlayer and ( !trEnt:Alive() or ( LambdaTeams and LambdaTeams:AreTeammates( self, trEnt ) or trEnt.IsFriendsWith and trEnt:IsFriendsWith( self ) ) ) then return end
 
-				LambdaMWII_OldPlayerTakedown( self )
-				if !self.Takedowning then return end
+			LambdaMWII_OldPlayerTakedown( self )
+			if !self.Takedowning then return end
 
-				local target = self.TakedowningTarget
-				if !IsValid( target ) or !target.IsLambdaPlayer then return end
+			local target = self.TakedowningTarget
+			if !IsValid( target ) or !target.IsLambdaPlayer then return end
 
+			target.TakedownFinisher = self
+			OnLambdaTakedown( target, true )
+		end
+
+		local entMeta = FindMetaTable( "Entity" )
+		LambdaMWII_OldNPCTakedown = ( LambdaMWII_OldNPCTakedown or entMeta.NPC_Takedown )
+		LambdaMWII_OldSetModel = ( LambdaMWII_OldSetModel or entMeta.SetModel )
+
+		function entMeta:NPC_Takedown( ent )
+			if IsValid( ent ) and ent.IsLambdaPlayer and ( !ent:Alive() or ( LambdaTeams and LambdaTeams:AreTeammates( self, ent ) or self.IsFriendsWith and self:IsFriendsWith( ent ) ) ) then return end
+
+			LambdaMWII_OldNPCTakedown( self, ent )
+			if !self.Takedowning then return end
+
+			if self.IsLambdaPlayer then
+				OnLambdaTakedown( self )
+			end
+
+			local target = self.TakedowningTarget
+			if IsValid( target ) and target.IsLambdaPlayer then
 				target.TakedownFinisher = self
 				OnLambdaTakedown( target, true )
 			end
 		end
 
-		if !LambdaMWII_OldNPCTakedown then
-			local entMeta = FindMetaTable( "Entity" )
-			LambdaMWII_OldNPCTakedown = entMeta.NPC_Takedown
-			
-			function entMeta:NPC_Takedown( ent )
-				if IsValid( ent ) and ent.IsLambdaPlayer and ( !ent:Alive() or ( LambdaTeams and LambdaTeams:AreTeammates( self, ent ) or self.IsFriendsWith and self:IsFriendsWith( ent ) ) ) then return end
-
-				LambdaMWII_OldNPCTakedown( self, ent )
-				if !self.Takedowning then return end
-
-				if self.IsLambdaPlayer then
-					OnLambdaTakedown( self )
-				end
-
-				local target = self.TakedowningTarget
-				if IsValid( target ) and target.IsLambdaPlayer then
-					target.TakedownFinisher = self
-					OnLambdaTakedown( target, true )
-				end
+		function entMeta:SetModel( mdl )
+			if self.Finisher != nil and self.NPC != nil then
+				local lambda = self.NPC
+			 	if IsValid( lambda ) and lambda.IsLambdaPlayer then
+			 		local lambdaMdl = lambda:GetModel()
+					if lambdaMdl then mdl = lambdaMdl end
+			 	end
 			end
+
+			LambdaMWII_OldSetModel( self, mdl )
 		end
 
 		local function LambdaBlankFunction( self ) end
