@@ -244,7 +244,9 @@ local function InitializeModule()
 		end
 
 		function entMeta:SetModel( mdl )
-			if self.Finisher != nil and self.NPC != nil then
+			if !mdl then return end
+
+			if self.Finisher != nil then
 				local lambda = self.NPC
 			 	if IsValid( lambda ) and lambda.IsLambdaPlayer then
 			 		local lambdaMdl = lambda:GetModel()
