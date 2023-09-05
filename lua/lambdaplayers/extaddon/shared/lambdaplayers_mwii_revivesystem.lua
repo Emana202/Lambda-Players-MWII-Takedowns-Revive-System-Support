@@ -199,7 +199,7 @@ local function InitializeModule()
 					ply.l_WeaponUseCooldown = ( CurTime() <= curCooldown and curCooldown + wepDelay or CurTime() + wepDelay )
 		            
 		            if LambdaIsValid( reviver ) then
-		            	if ply.AddFriend and random( 1, 3 ) != 1 then ply:AddFriend( reviver ) end
+		            	if ply.AddFriend and random( 3 ) != 1 then ply:AddFriend( reviver ) end
 
 		            	if reviver:IsPlayer() then
 		                    reviver:SetSVAnimation( "" )
@@ -207,7 +207,7 @@ local function InitializeModule()
 		                end
 
 						ply:LookTo( reviver, 1.0 )
-						ply:SimpleTimer( ( standTime / random( 1, 4 ) ), function() ply:PlaySoundFile( ply:GetVoiceLine( "assist" ) ) end )
+						ply:SimpleTimer( ( standTime / random( 4 ) ), function() ply:PlaySoundFile( ply:GetVoiceLine( "assist" ) ) end )
 		            end
 
 		            ply.l_DownedReviver = NULL
@@ -328,7 +328,7 @@ local function InitializeModule()
 	        	if !LambdaIsValid( reviver ) then 
 	        		local ene = self:GetEnemy()
 					local canSelfRevive = ( enableSelfReviving:GetBool() and self.l_UpdateDownedAnimations and !self.Takedowning and ( !self:InCombat() or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) or !self:IsInRange( ene, 1000 ) or !self:CanSee( ene ) ) and ( !self:IsPanicking() or !LambdaIsValid( self.l_RetreatTarget ) or !self:IsInRange( self.l_RetreatTarget, 1000 ) and !self:CanSee( self.l_RetreatTarget ) ) )
-	        		if !self.l_IsSelfReviving then self.l_IsSelfReviving = ( random( 1, 100 ) == 1 and canSelfRevive ) end
+	        		if !self.l_IsSelfReviving then self.l_IsSelfReviving = ( random( 100 ) == 1 and canSelfRevive ) end
 
 	        		if self.l_IsSelfReviving and canSelfRevive then
 					    self.l_moveWaitTime = CurTime() + 0.1
@@ -397,8 +397,8 @@ local function InitializeModule()
 	        elseif CurTime() > self.l_ReviveTargetsCheckTime then 
 	    		local ene = self:GetEnemy()
 
-	    		if ( !self:InCombat() or random( 1, 3 ) == 1 and !self:CanSee( ene ) or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) or ene.GetEnemy and ene:GetEnemy() != self ) and !self:IsPanicking() and self:GetState() != "ReviveFriend" and enableReviving:GetBool() then
-	        		local canRescueNeutrals = ( bystandersRevive:GetBool() and self:GetState() != "FindTarget" and random( 1, 100 ) > self:GetCombatChance() and random( 1, 2 ) == 1 )
+	    		if ( !self:InCombat() or random( 3 ) == 1 and !self:CanSee( ene ) or ene.IsLambdaPlayer and ( !ene:InCombat() or ene:GetEnemy() != self ) or ene.GetEnemy and ene:GetEnemy() != self ) and !self:IsPanicking() and self:GetState() != "ReviveFriend" and enableReviving:GetBool() then
+	        		local canRescueNeutrals = ( bystandersRevive:GetBool() and self:GetState() != "FindTarget" and random( 100 ) > self:GetCombatChance() and random( 2 ) == 1 )
 	        		local revTarget = self:GetClosestEntity( nil, 2000, function( ent )
 	        			if ( !ent.IsLambdaPlayer or ent:GetIsDead() ) and ( !ent:IsPlayer() or !ent:Alive() or ignorePlys:GetBool() ) or ent.Takedowning or !ent:IsDowned() or LambdaIsValid( ent.l_DownedReviver or ent:GetNWEntity( "Reviver" ) ) or !self:CanSee( ent ) then return false end
 	        			if canRescueNeutrals and ent.l_Downer != self and ( !LambdaTeams or LambdaTeams:AreTeammates( self, ent ) == nil ) and ( !self.IsFriendsWith or !self:IsFriendsWith( ent ) ) then return true end
@@ -407,7 +407,7 @@ local function InitializeModule()
 	        		end )
 
 	        		if IsValid( revTarget ) then
-	        			if !self:InCombat() and random( 1, 100 ) <= self:GetVoiceChance() then
+	        			if !self:InCombat() and random( 100 ) <= self:GetVoiceChance() then
 	        				self:PlaySoundFile( self:GetVoiceLine( "witness" ) )
 	        			end
 
@@ -460,7 +460,7 @@ local function InitializeModule()
 		end
 
 		local function OnPreKilled( self, dmginfo, silent )
-			if silent or self:IsDowned() or self.Takedowning or self.AlreadyWasDowned and downedOnce:GetBool() or dmginfo:IsExplosionDamage() or !enableDowning:GetBool() or random( 1, 100 ) > downChance:GetInt() then return end
+			if silent or self:IsDowned() or self.Takedowning or self.AlreadyWasDowned and downedOnce:GetBool() or dmginfo:IsExplosionDamage() or !enableDowning:GetBool() or random( 100 ) > downChance:GetInt() then return end
 
 			self:SetHealth( reviveHealth:GetInt() )
 			self:GodEnable()
@@ -500,7 +500,7 @@ local function InitializeModule()
 				self:SetIsReloading( false )
 			end
 
-			self:SimpleTimer( fallTime / random( 1, 4 ), function() 
+			self:SimpleTimer( fallTime / random( 4 ), function() 
 				if self:IsPanicking() then return end
 
 				if !useWeapons then self:RetreatFrom( attacker, 30 ) end
