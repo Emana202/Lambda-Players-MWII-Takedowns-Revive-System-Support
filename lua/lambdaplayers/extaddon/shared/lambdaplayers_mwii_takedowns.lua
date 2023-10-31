@@ -75,6 +75,7 @@ local function InitializeModule()
 			local tkBD = tkNPC.bd
 			if IsValid( tkBD ) then
 				self.l_BecomeRagdollEntity = tkBD
+				self:GetNW2Entity( "lambda_serversideragdoll", tkBD )
 
 				for _, child in ipairs( hiddenChildren ) do
 				    local fakeChild = ents_Create( "base_anim" )
