@@ -28,8 +28,6 @@ local function InitializeModule()
 
 		local ipairs = ipairs
 		local IsSinglePlayer = game.SinglePlayer
-		local random = math.random
-		local Rand = math.Rand
 		local deg = math.deg
 		local acos = math.acos
 		local ents_FindByClass = ents.FindByClass
@@ -52,7 +50,7 @@ local function InitializeModule()
 			if !tkNPC then return end
 
 			local prevWeapon = self.l_Weapon
-			self:SwitchWeapon( "none" )
+			self:SwitchWeapon( "none", true )
 			self:PreventWeaponSwitch( true )
 
 			self.TakedownNPC = tkNPC
@@ -96,8 +94,8 @@ local function InitializeModule()
 			end
 
 			if isVictim then
-				if random( 100 ) <= self:GetVoiceChance() then
-					self:SimpleTimer( Rand( 0.33, 1.0 ), function() self:PlaySoundFile( self:GetVoiceLine( "panic" ) ) end )
+				if LambdaRNG( 100 ) <= ( self:GetVoiceChance() * 2 ) then
+					self:SimpleTimer( LambdaRNG( 0.33, 1, true ), function() self:PlaySoundFile( self:GetVoiceLine( "panic" ), false ) end )
 				end
 
 				for _, v in ipairs( GetLambdaPlayers() ) do
@@ -106,10 +104,10 @@ local function InitializeModule()
 					v:SetEnemy( NULL )
 					v:CancelMovement()
 				end
-			elseif random( 100 ) <= self:GetVoiceChance() then
-				self:SimpleTimer( tkNPC.Delay / Rand( 1.25, 1.5 ), function()
+			elseif LambdaRNG( 100 ) <= ( self:GetVoiceChance() * 2 ) then
+				self:SimpleTimer( tkNPC.Delay / LambdaRNG( 1.25, 1.5, true ), function()
 					if self:IsSpeaking() then return end
-					self:PlaySoundFile( self:GetVoiceLine( "kill" ) ) 
+					self:PlaySoundFile( self:GetVoiceLine( "kill" ), false ) 
 				end )
 			end
 
@@ -220,7 +218,7 @@ local function InitializeModule()
 
 		local function OnInitialize( self )
 			self.GetActiveWeapon = LambdaBlankFunction
-			self.l_TakedownCheckTime = CurTime() + Rand( 0.1, 0.25 )
+			self.l_TakedownCheckTime = CurTime() + LambdaRNG( 0.1, 0.25, true )
 		end
 
 		local onlyFromBack = GetConVar( "mwii_takedown_only_from_back" )
@@ -270,7 +268,7 @@ local function InitializeModule()
 			end
 
 			if CurTime() >= self.l_TakedownCheckTime then
-				self.l_TakedownCheckTime = CurTime() + Rand( 0.1, 0.25 )
+				self.l_TakedownCheckTime = CurTime() + LambdaRNG( 0.1, 0.25, true )
 			end
 		end
 
@@ -296,8 +294,8 @@ local function InitializeModule()
 				if LambdaIsValid( tkTarget ) and tkTarget.IsLambdaPlayer then
 					local attacker = dmginfo:GetAttacker()
 					if attacker != self and attacker != tkTarget then
-						if tkTarget.AddFriend and random( 3 ) == 1 then tkTarget:AddFriend( self ) end
-						if random( 100 ) <= tkTarget:GetVoiceChance() then tkTarget:PlaySoundFile( tkTarget:GetVoiceLine( "assist" ) ) end
+						if tkTarget.AddFriend and LambdaRNG( 3 ) == 1 then tkTarget:AddFriend( self ) end
+						if LambdaRNG( 100 ) <= tkTarget:GetVoiceChance() then tkTarget:PlaySoundFile( tkTarget:GetVoiceLine( "assist" ) ) end
 					end
 				end
 				self.TakedowningTarget = NULL
