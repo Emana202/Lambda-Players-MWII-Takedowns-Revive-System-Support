@@ -1,4 +1,4 @@
-if !file.Exists( "autorun/sh_mwii_survivor.lua", "LUA" ) then return end
+if !file.Exists( "autorun/sh_mwii_survivor.lua", "LUA" ) and !file.Exists( "autorun/sh_mw3_survivor.lua", "LUA" ) then return end
 local hookName = "LambdaMWII_ReviveSystem_"
 
 local enableDowning 		= CreateLambdaConvar( "lambdaplayers_mwii_revivesystem_enabledowning", 1, true, false, false, "If Lambda Players can be downed if they reach zero health", 0, 1, { type = "Bool", name = "Enable Downing", category = "MWII - Revive System" } )

@@ -1,4 +1,4 @@
-if !file.Exists( "autorun/sh_mwii_takedowns.lua", "LUA" ) then return end
+if !file.Exists( "autorun/sh_mwii_takedowns.lua", "LUA" ) and !file.Exists( "autorun/sh_mw3_takedowns.lua", "LUA" ) then return end
 local hookName = "LambdaMWII_Takedowns_"
 
 local enableTakedowns = CreateLambdaConvar( "lambdaplayers_mwii_takedowns_enabled", 1, true, false, false, "If Lambda Players are allowed to execute takedowns when right behind their targets. Make sure that Lambda Players are registered in the Takedown NPC and Can be Takedowned NPC list", 0, 1, { type = "Bool", name = "Enable Takedowns", category = "MWII - Takedowns" } )
